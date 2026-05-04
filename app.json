@@ -6,8 +6,18 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "habbitapp",
-    "assetBundlePatterns": ["**/*"],
-    "runtimeVersion": { "policy": "appVersion" },
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#451ebb"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
@@ -26,6 +36,10 @@
     "android": {
       "package": "com.habbitapp.app",
       "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#451ebb"
+      },
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
@@ -40,6 +54,7 @@
     "web": {
       "bundler": "metro",
       "output": "single",
+      "favicon": "./assets/favicon.png",
       "name": "HabbitApp",
       "shortName": "HabbitApp",
       "description": "Build habits, track progress, earn badges.",
@@ -67,15 +82,18 @@
           "username": "REPLACE_WITH_EXPO_USERNAME"
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+        "projectId": "a2e33959-81eb-4c3c-ba61-c2503eb7beba"
       }
-    }
+    },
+    "owner": "rk12333"
   }
 }
