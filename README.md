@@ -1,65 +1,144 @@
-# Habbit — A Quiet Habit Tracker
+# HabbitApp
 
-A mobile-first habit tracker built from the **Vivid Habit Tracker** Google Stitch design (the *Quiet Energy* theme: deep purple + soft teal + warm orange on a calm off-white canvas).
+A cross-platform habit tracker for iOS, Android, and the web. Build daily habits, track
+streaks, log progress, and earn badges.
 
-- **Stack:** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS v3
-- **Auth & data:** Supabase (Postgres + Auth, optional — app runs in demo mode without it)
-- **Design tokens:** Material 3 palette baked into `tailwind.config.ts`
+**Stack:** Expo SDK 54 · React Native 0.81 · React 19 · TypeScript · NativeWind v4
+(Tailwind) · Expo Router v6 · Supabase (auth + Postgres) · Sentry · PostHog
 
-## Run locally
+---
+
+## Quick start
 
 ```bash
-npm install
-npm run dev
+# 1. Install
+npm install --legacy-peer-deps
+
+# 2. Configure environment
+cp .env.local.example .env.local
+# Edit .env.local with your Supabase project URL/key
+
+# 3. Apply DB schema (one time, in Supabase SQL editor)
+# Paste contents of supabase/schema.sql
+
+# 4. Run
+npx expo start
+# Then press `i` (iOS), `a` (Android), or `w` (web)
 ```
 
-Open http://localhost:3000 — the app boots straight into demo mode with seed habits.
+### Environment variables
 
-## Connect Supabase (optional, for persistence)
+`.env.local`:
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. Copy the project URL and anon key into a new `.env.local` (use `.env.local.example` as a template):
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-   ```
-3. Open the SQL editor in Supabase and run `supabase/schema.sql` once.
-4. Enable email + password sign-in under *Authentication → Providers*.
-5. Restart `npm run dev`. Visit `/login` to create an account.
+```
+EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+EXPO_PUBLIC_SENTRY_DSN=                # optional — leave empty to disable crash reporting
+EXPO_PUBLIC_POSTHOG_KEY=               # optional — leave empty to disable analytics
+EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+```
 
-When env vars are missing or no user is signed in, every page falls back to seed data so the design always renders.
+All `EXPO_PUBLIC_*` vars are bundled into the client at build time. Don't put service-role
+keys here.
 
-## Routes
-
-| Route | Purpose |
-|---|---|
-| `/` | Dashboard — today's habits, ring + chips, weekly bento |
-| `/habits/[id]` | Detail — streaks, weekly bars, recent entries |
-| `/habits/new` | Create habit form |
-| `/achievements` | Level + badges + locked milestones |
-| `/settings` | Account, reminders, motivational previews, app prefs |
-| `/login` | Email/password sign-in (Supabase) |
+---
 
 ## Project layout
 
 ```
-src/
-├── app/                # App Router pages + server actions
-│   ├── page.tsx        # Dashboard
-│   ├── habits/[id]/    # Detail
-│   ├── habits/new/     # Create habit
-│   ├── achievements/   # Badges
-│   ├── settings/       # Settings
-│   ├── login/          # Auth
-│   └── actions.ts      # Server actions (toggle habit)
-├── components/         # Icon, BottomNav, TopAppBar, HabitCard, ProgressRing, …
-├── lib/
-│   ├── habits.ts       # Data access (Supabase or seed fallback)
-│   ├── seed.ts         # Demo data
-│   └── supabase/       # Browser + server clients
-└── types/db.ts         # Habit / Completion / Badge types
+app/                       Expo Router screens (file-based routing)
+  _layout.tsx              Root: ErrorBoundary, ThemeProvider, Auth guard
+  +html.tsx                Web HTML shell (PWA manifest, OG tags, SEO)
+  login.tsx                Auth screen (sign in / sign up / forgot password)
+  (tabs)/                  Bottom tab group
+    index.tsx              Dashboard (today's habits, progress ring)
+    achievements.tsx       Badges + XP/level
+    settings/              Settings stack (profile, reminders, security)
+  habits/                  Habit detail / create / edit (modal-style)
+
+components/                React Native components (NativeWind className)
+  error-boundary.tsx       Catches uncaught render errors → Sentry + retry UI
+  habit-card.tsx, ...
+
+lib/                       Shared logic (no UI)
+  supabase/client.ts       Single Supabase client (SecureStore on native, localStorage on web)
+  habits.ts                Read queries (getHabitsForToday, getHabit, getStats)
+  actions.ts               Mutations (toggle, create, update, delete)
+  reminders.ts             Reminder schedule builder
+  password.ts              validatePassword(): rule helper
+  sentry.ts                Crash reporting wrapper (lazy-loaded)
+  analytics.ts             PostHog wrapper (lazy-loaded)
+  storage.{native,web}.ts  Platform storage adapter
+  haptics.{native,web}.ts  Platform haptics adapter
+  notifications.{native,web}.ts  Platform notifications adapter
+  secure-storage.{native,web}.ts SecureStore-backed token storage
+
+types/db.ts                Shared TypeScript types (Habit, HabitCompletion, Badge)
+supabase/schema.sql        Postgres schema + RLS policies
+
+assets/                    App icons, splash, etc. (you provide PNGs — see SHIPPING.md)
+public/                    Web-only static files (manifest, favicon)
 ```
 
-## Design source
+The platform-specific files (`*.native.ts` / `*.web.ts`) are picked automatically by Metro
+at bundle time. The accompanying `*.ts` files are TypeScript stubs.
 
-Generated from the Stitch project **Vivid Habit Tracker** (`projects/4310500496842726719`). Reference HTML lives in `.stitch-design/` (gitignored).
+---
+
+## Common commands
+
+```bash
+# Development
+npx expo start                  # Dev server with QR code
+npx expo start --web            # Web only
+npx expo start --clear          # Clear bundler cache
+
+# Quality
+npx tsc --noEmit                # Typecheck
+
+# Builds (requires `npx eas-cli login`)
+npx eas-cli build -p ios --profile preview
+npx eas-cli build -p android --profile preview
+npx eas-cli build -p all --profile production
+
+# OTA updates
+npx eas-cli update --branch preview --message "Fix dashboard refresh"
+npx eas-cli update --branch production
+
+# Submit to stores
+npx eas-cli submit -p ios
+npx eas-cli submit -p android
+
+# Web export (deploy dist/ to Vercel / Netlify / Cloudflare Pages)
+npx expo export -p web
+```
+
+---
+
+## Before publishing
+
+See **`SHIPPING.md`** for the full submission checklist (developer accounts, app icons,
+screenshots, privacy policy, store listings).
+
+See **`QA.md`** for the manual test plan to run through every release.
+
+---
+
+## Architecture notes
+
+- **Auth tokens** stored via `expo-secure-store` (native) or `localStorage` (web) using
+  the `secureStorage` adapter in `lib/secure-storage.{native,web}.ts`.
+- **Demo mode**: when `EXPO_PUBLIC_SUPABASE_URL` is empty, `isSupabaseConfigured()` returns
+  false and screens show empty states instead of crashing.
+- **Theme**: `ThemeProvider` reads system color scheme by default and persists user override
+  in storage. NativeWind's `dark:` modifier handles the rest.
+- **Error handling**: `ErrorBoundary` at the root catches uncaught render errors, forwards
+  them to Sentry, and shows a friendly fallback with a retry button.
+- **OTA updates**: published via `eas update`. Fallback timeout is 30s — if the updated
+  bundle can't be fetched, the app uses the embedded one.
+
+---
+
+## License
+
+Private project — no license granted.

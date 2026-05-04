@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "HabbitApp",
+    "slug": "habbitapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "habbitapp",
+    "assetBundlePatterns": ["**/*"],
+    "runtimeVersion": { "policy": "appVersion" },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 30000
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.habbitapp.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "HabbitApp uses notifications to remind you about your habits.",
+        "NSUserTrackingUsageDescription": "We use anonymous analytics to understand which features are used so we can make HabbitApp better. No personal data is collected.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.habbitapp.app",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "HabbitApp",
+      "shortName": "HabbitApp",
+      "description": "Build habits, track progress, earn badges.",
+      "themeColor": "#451ebb",
+      "backgroundColor": "#f8f9fa",
+      "display": "standalone",
+      "startUrl": "/",
+      "lang": "en",
+      "scope": "/"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#451ebb",
+          "defaultChannel": "default"
+        }
+      ],
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-updates",
+        {
+          "username": "REPLACE_WITH_EXPO_USERNAME"
+        }
+      ],
+      "@sentry/react-native"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

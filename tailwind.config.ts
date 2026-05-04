@@ -1,27 +1,50 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class",
-  content: ["./src/**/*.{ts,tsx}"],
+  darkMode: "media",
+  content: [
+    "./app/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+  ],
+  presets: [require("nativewind/preset")],
   theme: {
     extend: {
       colors: {
-        background: "var(--bg)",
-        "on-background": "var(--on-bg)",
-        surface: "var(--surface)",
-        "surface-bright": "var(--surface)",
+        // --- Light mode semantic tokens ---
+        background: "#f8f9fa",
+        "on-background": "#191c1d",
+        surface: "#f8f9fa",
+        "surface-lowest": "#ffffff",
+        "surface-low": "#f3f4f5",
+        "surface-container": "#edeeef",
+        "surface-high": "#e7e8e9",
+        "surface-highest": "#e1e3e4",
+        "surface-variant": "#e1e3e4",
+        "on-surface": "#191c1d",
+        "on-surface-variant": "#484554",
         "surface-dim": "#d9dadb",
-        "surface-variant": "var(--surface-variant)",
-        "surface-container-lowest": "var(--surface-lowest)",
-        "surface-container-low": "var(--surface-low)",
-        "surface-container": "var(--surface-container)",
-        "surface-container-high": "var(--surface-high)",
-        "surface-container-highest": "var(--surface-highest)",
-        "on-surface": "var(--on-surface)",
-        "on-surface-variant": "var(--on-surface-variant)",
         "inverse-surface": "#2e3132",
         "inverse-on-surface": "#f0f1f2",
         "surface-tint": "#6042d6",
+        outline: "#797586",
+        "outline-variant": "#c9c4d7",
+
+        // --- Dark mode semantic tokens (use with dark: prefix) ---
+        "d-background": "#0f0f14",
+        "d-on-background": "#e7e8eb",
+        "d-surface": "#14141b",
+        "d-surface-lowest": "#1b1b24",
+        "d-surface-low": "#1f1f29",
+        "d-surface-container": "#24242f",
+        "d-surface-high": "#2c2c38",
+        "d-surface-highest": "#353541",
+        "d-surface-variant": "#2c2c38",
+        "d-on-surface": "#e7e8eb",
+        "d-on-surface-variant": "#b7b3c4",
+        "d-outline": "#9b95ad",
+        "d-outline-variant": "#4a4658",
+
+        // --- Brand / MD3 fixed tokens (same in both modes) ---
         primary: "#451ebb",
         "on-primary": "#ffffff",
         "primary-container": "#5d3fd3",
@@ -51,8 +74,6 @@ const config: Config = {
         "on-error": "#ffffff",
         "error-container": "#ffdad6",
         "on-error-container": "#93000a",
-        outline: "var(--outline)",
-        "outline-variant": "var(--outline-variant)",
       },
       borderRadius: {
         DEFAULT: "0.25rem",
@@ -82,13 +103,6 @@ const config: Config = {
         "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
         "headline-lg": ["28px", { lineHeight: "36px", letterSpacing: "-0.01em", fontWeight: "700" }],
         "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "700" }],
-      },
-      boxShadow: {
-        "soft-purple": "0 8px 30px rgba(93, 63, 211, 0.08)",
-        "soft-purple-md": "0 8px 30px rgba(93, 63, 211, 0.05)",
-        "soft-purple-lg": "0 12px 40px rgba(93, 63, 211, 0.3)",
-        "nav-up": "0 -8px 30px rgba(93, 63, 211, 0.12)",
-        card: "0 4px 20px rgba(0, 0, 0, 0.03)",
       },
     },
   },

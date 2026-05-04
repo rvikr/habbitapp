@@ -1,0 +1,43 @@
+import { ScrollViewStyleReset } from "expo-router/html";
+
+export default function Root({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="HabbitApp" />
+        <meta name="theme-color" content="#451ebb" />
+        <meta name="mobile-web-app-capable" content="yes" />
+
+        <title>HabbitApp — Build habits, track progress, earn badges</title>
+        <meta name="description" content="Track your daily habits, build streaks, and unlock achievements. Cross-platform on iOS, Android, and web." />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="HabbitApp" />
+        <meta property="og:description" content="Build habits, track progress, earn badges." />
+        <meta property="og:image" content="/og-image.png" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="HabbitApp" />
+        <meta name="twitter:description" content="Build habits, track progress, earn badges." />
+
+        {/* PWA */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="apple-touch-icon" href="/favicon.png" />
+
+        <ScrollViewStyleReset />
+
+        {/* Prevent flash of unstyled content for body color in light/dark */}
+        <style dangerouslySetInnerHTML={{ __html: `body{background:#f8f9fa;}@media(prefers-color-scheme:dark){body{background:#0f0f14;}}` }} />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}

@@ -3,6 +3,11 @@ node_modules/
 .next/
 out/
 build/
+dist/
+
+# Expo
+.expo/
+expo-env.d.ts
 
 # env
 .env
