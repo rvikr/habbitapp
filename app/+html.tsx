@@ -34,8 +34,13 @@ export default function Root({ children }: { children: React.ReactNode }) {
 
         <ScrollViewStyleReset />
 
-        {/* Prevent flash of unstyled content for body color in light/dark */}
-        <style dangerouslySetInnerHTML={{ __html: `body{background:#f8f9fa;}@media(prefers-color-scheme:dark){body{background:#0f0f14;}}` }} />
+        {/* Body background frames the phone-shaped app on desktop, fills the viewport on mobile. */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          html,body,#root,#__next{height:100%;}
+          body{margin:0;background:#edeeef;}
+          @media(prefers-color-scheme:dark){body{background:#0f0f14;}}
+          @media(max-width:480px){body{background:#f8f9fa;}@media(prefers-color-scheme:dark){body{background:#0f0f14;}}}
+        ` }} />
       </head>
       <body>{children}</body>
     </html>

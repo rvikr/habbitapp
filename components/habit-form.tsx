@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Switch } from "react-native";
 import Icon from "./icon";
 import HabitCatalogPicker from "./habit-catalog-picker";
 import type { Habit } from "@/types/db";
@@ -12,12 +12,15 @@ const COLORS: Array<{ id: "primary" | "secondary" | "tertiary" | "neutral"; labe
   { id: "tertiary", label: "Orange", hex: "#7b2900" },
   { id: "neutral", label: "Neutral", hex: "#484554" },
 ];
+const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const TIME_PRESETS = ["07:00", "08:00", "12:00", "16:00", "20:00", "22:00"];
 
+type ColorId = "primary" | "secondary" | "tertiary" | "neutral";
 type FormData = {
   name: string;
   description: string | null;
   icon: string;
-  color: "primary" | "secondary" | "tertiary" | "neutral";
+  color: ColorId;
   unit: string;
   target: number | null;
   remindersEnabled: boolean;
@@ -36,19 +39,42 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [icon, setIcon] = useState(initial?.icon ?? "spa");
-  const [color, setColor] = useState<"primary" | "secondary" | "tertiary" | "neutral">(initial?.color ?? "primary");
+  const [color, setColor] = useState<ColorId>(initial?.color ?? "primary");
   const [unit, setUnit] = useState(initial?.unit ?? "");
   const [target, setTarget] = useState(initial?.target?.toString() ?? "");
+  const [remindersEnabled, setRemindersEnabled] = useState(initial?.reminders_enabled ?? false);
+  const [reminderTimes, setReminderTimes] = useState<string[]>(initial?.reminder_times ?? []);
+  const [reminderDays, setReminderDays] = useState<number[]>(initial?.reminder_days ?? [0, 1, 2, 3, 4, 5, 6]);
+  const [customTime, setCustomTime] = useState("");
   const [loading, setLoading] = useState(false);
 
   function applyTemplate(entry: CatalogEntry) {
     setName(entry.name);
     setDescription(entry.description);
     setIcon(entry.icon);
-    setColor(entry.color as "primary" | "secondary" | "tertiary" | "neutral");
+    setColor(entry.color as ColorId);
     setUnit(entry.unit);
     setTarget(entry.target?.toString() ?? "");
+    if (entry.defaultTimes.length > 0) {
+      setRemindersEnabled(true);
+      setReminderTimes(entry.defaultTimes);
+    }
     setShowCatalog(false);
+  }
+
+  function toggleTime(time: string) {
+    setReminderTimes((prev) => prev.includes(time) ? prev.filter((t) => t !== time) : [...prev, time].sort());
+  }
+
+  function addCustomTime() {
+    const t = customTime.trim();
+    if (!/^\d{2}:\d{2}$/.test(t)) return;
+    if (!reminderTimes.includes(t)) setReminderTimes((prev) => [...prev, t].sort());
+    setCustomTime("");
+  }
+
+  function toggleDay(day: number) {
+    setReminderDays((prev) => prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort());
   }
 
   async function handleSubmit() {
@@ -61,24 +87,19 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
       color,
       unit: unit.trim(),
       target: target ? parseFloat(target) : null,
-      remindersEnabled: false,
-      reminderTimes: [],
-      reminderDays: [0, 1, 2, 3, 4, 5, 6],
+      remindersEnabled,
+      reminderTimes: remindersEnabled ? reminderTimes : [],
+      reminderDays: remindersEnabled ? (reminderDays.length > 0 ? reminderDays : [0, 1, 2, 3, 4, 5, 6]) : [0, 1, 2, 3, 4, 5, 6],
     });
     setLoading(false);
   }
 
   if (showCatalog && !initial) {
-    return (
-      <HabitCatalogPicker
-        onSelect={applyTemplate}
-        onSkip={() => setShowCatalog(false)}
-      />
-    );
+    return <HabitCatalogPicker onSelect={applyTemplate} onSkip={() => setShowCatalog(false)} />;
   }
 
   return (
-    <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }}>
+    <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
       <View className="px-margin-mobile gap-md">
         {/* Name */}
         <View>
@@ -164,6 +185,93 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
               keyboardType="decimal-pad"
             />
           </View>
+        </View>
+
+        {/* Reminders */}
+        <View className="bg-surface-container dark:bg-d-surface-container rounded-xl p-md gap-sm">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1">
+              <Text className="text-body-md text-on-surface dark:text-d-on-surface font-semibold">Reminders</Text>
+              <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">Send notifications at specific times.</Text>
+            </View>
+            <Switch
+              value={remindersEnabled}
+              onValueChange={setRemindersEnabled}
+              trackColor={{ false: "#c9c4d7", true: "#5d3fd3" }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          {remindersEnabled && (
+            <>
+              <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mt-sm">TIMES</Text>
+              <View className="flex-row flex-wrap gap-xs">
+                {TIME_PRESETS.map((t) => {
+                  const active = reminderTimes.includes(t);
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => toggleTime(t)}
+                      className={`px-md py-xs rounded-full ${active ? "bg-primary" : "bg-surface-high dark:bg-d-surface-high"}`}
+                    >
+                      <Text className={`text-label-lg ${active ? "text-on-primary" : "text-on-surface dark:text-d-on-surface"}`}>{t}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {reminderTimes.filter((t) => !TIME_PRESETS.includes(t)).length > 0 && (
+                <View className="flex-row flex-wrap gap-xs">
+                  {reminderTimes.filter((t) => !TIME_PRESETS.includes(t)).map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => toggleTime(t)}
+                      className="px-md py-xs rounded-full bg-primary flex-row items-center gap-xs"
+                    >
+                      <Text className="text-on-primary text-label-lg">{t}</Text>
+                      <Text className="text-on-primary text-label-sm">×</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <View className="flex-row gap-xs items-center">
+                <TextInput
+                  className="flex-1 bg-surface-high dark:bg-d-surface-high text-on-surface dark:text-d-on-surface rounded-xl px-md py-xs text-body-md"
+                  placeholder="HH:MM (24h)"
+                  placeholderTextColor="#797586"
+                  value={customTime}
+                  onChangeText={setCustomTime}
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={5}
+                />
+                <TouchableOpacity
+                  className="bg-primary px-md py-xs rounded-full"
+                  onPress={addCustomTime}
+                  disabled={!/^\d{2}:\d{2}$/.test(customTime)}
+                  style={{ opacity: /^\d{2}:\d{2}$/.test(customTime) ? 1 : 0.4 }}
+                >
+                  <Text className="text-on-primary text-label-lg">Add</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mt-sm">REPEAT ON</Text>
+              <View className="flex-row gap-xs">
+                {DAY_LABELS.map((label, i) => {
+                  const active = reminderDays.includes(i);
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => toggleDay(i)}
+                      className={`flex-1 py-xs rounded-full items-center ${active ? "bg-primary" : "bg-surface-high dark:bg-d-surface-high"}`}
+                    >
+                      <Text className={`text-label-lg ${active ? "text-on-primary" : "text-on-surface dark:text-d-on-surface"}`}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </>
+          )}
         </View>
 
         {/* Submit */}

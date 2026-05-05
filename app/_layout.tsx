@@ -1,5 +1,6 @@
 import "../global.css";
 import { useEffect } from "react";
+import { Platform, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans";
@@ -38,18 +39,41 @@ function AuthGuard() {
 
 function RootLayoutContent() {
   const { colorScheme } = useTheme();
+  const stack = (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="habits/new" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="habits/[id]/index" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="habits/[id]/edit" options={{ headerShown: false, presentation: "card" }} />
+    </Stack>
+  );
+
   return (
     <>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       <AuthGuard />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="habits/new" options={{ headerShown: false, presentation: "card" }} />
-        <Stack.Screen name="habits/[id]/index" options={{ headerShown: false, presentation: "card" }} />
-        <Stack.Screen name="habits/[id]/edit" options={{ headerShown: false, presentation: "card" }} />
-      </Stack>
+      {Platform.OS === "web" ? <WebFrame>{stack}</WebFrame> : stack}
     </>
+  );
+}
+
+// Web-only: constrain the app to a phone-shaped column on desktop browsers.
+// On mobile widths it fills the viewport; on tablet+ it caps at 480px and centres.
+function WebFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        width: "100%",
+        maxWidth: 480,
+        marginLeft: "auto",
+        marginRight: "auto",
+        alignSelf: "center",
+      }}
+    >
+      {children}
+    </View>
   );
 }
 

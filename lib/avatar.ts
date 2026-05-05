@@ -21,8 +21,10 @@ export function avatarUrl(style?: AvatarStyle | null, seed?: string | null) {
     seed: sd,
     backgroundColor: "e6deff,d8ceff,c9c4d7,73f3ef,ffdbce",
     radius: "50",
+    size: "256",
   });
-  return `https://api.dicebear.com/9.x/${s}/svg?${params.toString()}`;
+  // PNG (not SVG) so React Native's <Image> can render it on every platform.
+  return `https://api.dicebear.com/9.x/${s}/png?${params.toString()}`;
 }
 
 export function avatarFromUser(user: {

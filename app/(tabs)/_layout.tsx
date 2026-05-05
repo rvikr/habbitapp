@@ -46,6 +46,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: "Ranks",
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="podium" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
