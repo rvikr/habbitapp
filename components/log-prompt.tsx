@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, Modal, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { Habit } from "@/types/db";
+import { parseOptionalPositiveNumber } from "@/lib/validation";
 
 type Props = {
   visible: boolean;
@@ -13,10 +14,16 @@ type Props = {
 export default function LogPrompt({ visible, habit, onSubmit, onDismiss }: Props) {
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   function handleSubmit() {
-    const num = parseFloat(value) || 1;
-    onSubmit(num, note);
+    const parsed = parseOptionalPositiveNumber(value);
+    if (!parsed.ok) {
+      setError("Enter a positive value.");
+      return;
+    }
+    setError(null);
+    onSubmit(parsed.value ?? 1, note);
     setValue("");
     setNote("");
   }
@@ -54,6 +61,7 @@ export default function LogPrompt({ visible, habit, onSubmit, onDismiss }: Props
             multiline
             numberOfLines={2}
           />
+          {error && <Text className="text-error text-label-sm mb-sm">{error}</Text>}
           <TouchableOpacity className="bg-primary rounded-full py-sm items-center" onPress={handleSubmit}>
             <Text className="text-on-primary text-label-lg font-semibold">Log</Text>
           </TouchableOpacity>

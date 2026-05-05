@@ -13,7 +13,7 @@ deploy. Items marked **(automatable)** I've already wired into the codebase; ite
 | Apple Developer Program | you | $99/yr | https://developer.apple.com/programs/ — required for App Store. Allow 1–2 days for verification. |
 | Google Play Developer | you | $25 one-time | https://play.google.com/console/signup — required for Play Store. |
 | Expo / EAS account | you | Free / paid | https://expo.dev — free tier covers small apps. `npx eas-cli login` after sign-up. |
-| Supabase production project | you | Free / paid | Create a *separate* project for production (don't reuse dev). Apply `supabase/schema.sql`. |
+| Supabase production project | you | Free / paid | Create a *separate* project for production (don't reuse dev). Apply `supabase/schema.sql`, then `supabase/migrations/` in order. |
 | Sentry | you | Free | https://sentry.io — create a React Native project, copy DSN to `EXPO_PUBLIC_SENTRY_DSN`. |
 | PostHog | you | Free | https://posthog.com — copy project key to `EXPO_PUBLIC_POSTHOG_KEY`. |
 | Vercel / Netlify (for web) | you | Free | Either works. Free tier handles low traffic. |
@@ -21,11 +21,10 @@ deploy. Items marked **(automatable)** I've already wired into the codebase; ite
 
 ---
 
-## 2. Visual assets (you provide PNGs)
+## 2. Visual assets
 
-Place under `assets/`. Once added, restore the asset references in `app.json` (`icon`,
-`splash.image`, `android.adaptiveIcon`, `web.favicon`) — currently removed because the
-files don't exist.
+The required app/PWA PNGs are present under `assets/` and `public/`. Regenerate them from
+source artwork before submission if the branding changes.
 
 | File | Size | Notes |
 |---|---|---|
@@ -43,7 +42,7 @@ Suggested tools: Figma (free), Icon Kitchen (https://icon.kitchen) for adaptive 
 ## 3. Store listing assets
 
 ### App Store (iOS)
-- Screenshots — 6.7" iPhone (Pro Max) **required**, 5.5" iPhone optional, iPad if `supportsTablet=true`
+- Screenshots — 6.7" iPhone (Pro Max) **required**, 5.5" iPhone optional. iPad screenshots are not needed while `supportsTablet=false`.
 - App preview videos optional
 - App description (max 4000 chars) + promotional text (170 chars) + keywords (100 chars total, comma-separated)
 - Support URL + Marketing URL + Privacy Policy URL
@@ -64,7 +63,7 @@ Suggested tools: Figma (free), Icon Kitchen (https://icon.kitchen) for adaptive 
 ## 4. Code-side prep (automatable, mostly done)
 
 - ✅ TypeScript clean (`npx tsc --noEmit`)
-- ✅ `eas.json` exists — fill in `REPLACE_WITH_...` placeholders
+- ✅ `eas.json` exists; submit credentials are intentionally not committed
 - ✅ `app.json` configured with bundleId, package, version, buildNumber, versionCode
 - ✅ iOS privacy strings (NSUserNotificationsUsageDescription, NSUserTrackingUsageDescription)
 - ✅ Android permissions minimised + blocked list
@@ -73,17 +72,14 @@ Suggested tools: Figma (free), Icon Kitchen (https://icon.kitchen) for adaptive 
 - ✅ expo-updates configured for OTA
 - ✅ PWA manifest + meta tags for web
 - ✅ Forgot password + email confirmation flow
+- ✅ In-app Privacy & Data screen with export and account deletion request
 
 **Still TODO before submission (you):**
 
-- [ ] Replace `REPLACE_WITH_APPLE_ID@example.com` in `eas.json`
-- [ ] Replace `REPLACE_WITH_APP_STORE_CONNECT_ID` in `eas.json`
-- [ ] Replace `REPLACE_WITH_TEAM_ID` in `eas.json`
-- [ ] Replace `REPLACE_WITH_EAS_PROJECT_ID` in `app.json` (run `npx eas init`)
-- [ ] Replace `REPLACE_WITH_EXPO_USERNAME` in `app.json` updates plugin
-- [ ] Add `play-service-account.json` (Google service account key) to repo root, gitignored
+- [ ] Configure App Store Connect credentials locally or in EAS before `eas submit -p ios`
+- [ ] Add `play-service-account.json` locally or configure Google Play credentials in EAS before `eas submit -p android`
 - [ ] Confirm `com.habbitapp.app` bundle ID is unique to you (or change to your reverse domain)
-- [ ] Set production env vars in EAS: `npx eas-cli secret:create EXPO_PUBLIC_SENTRY_DSN ...`
+- [ ] Set production env vars in EAS: Supabase URL/key, privacy policy URL, Sentry DSN, and PostHog key/host
 
 ---
 

@@ -28,6 +28,7 @@ export function avatarUrl(style?: AvatarStyle | null, seed?: string | null) {
 }
 
 export function avatarFromUser(user: {
+  id?: string | null;
   user_metadata?: Record<string, unknown> | null;
   email?: string | null;
 }) {
@@ -35,7 +36,7 @@ export function avatarFromUser(user: {
   const style = (meta.avatar_style as AvatarStyle | undefined) ?? "avataaars";
   const seed =
     (meta.avatar_seed as string | undefined) ??
-    user.email?.split("@")[0] ??
+    user.id?.slice(0, 12) ??
     "Aspen";
   return avatarUrl(style, seed);
 }

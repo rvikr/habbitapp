@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
+import { Alert, View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -42,7 +42,11 @@ export default function DashboardScreen() {
     if (wasDone) next.delete(habitId);
     else { next.add(habitId); celebrate(); }
     setData({ ...data, completedToday: next });
-    await toggleHabit(habitId, wasDone);
+    const result = await toggleHabit(habitId, wasDone);
+    if (!result.ok) {
+      setData(data);
+      Alert.alert("Could not update habit", result.error ?? "Try again.");
+    }
   }
 
   const habits = data?.habits ?? [];

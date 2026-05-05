@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Image, Modal, TextInput, ActivityIndicator } from "react-native";
+import { Alert, View, Text, ScrollView, TouchableOpacity, RefreshControl, Image, Modal, TextInput, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -42,11 +42,20 @@ export default function LeaderboardScreen() {
   }
 
   async function handleOptOut() {
-    setSaving(true);
-    await setDisplayName(null);
-    setSaving(false);
-    setShowOptIn(false);
-    load();
+    Alert.alert("Leave leaderboard?", "Your display name and stats will no longer be shown to other users.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          setSaving(true);
+          await setDisplayName(null);
+          setSaving(false);
+          setShowOptIn(false);
+          load();
+        },
+      },
+    ]);
   }
 
   const optedIn = profile?.display_name != null;

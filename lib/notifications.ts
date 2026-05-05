@@ -7,4 +7,5 @@ export declare function scheduleHabitReminder(
   time: string,
   days: number[]
 ): Promise<string[]>;
+export declare function cancelScheduledReminder(id: string): Promise<void>;
 export declare function cancelAllReminders(): Promise<void>;

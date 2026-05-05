@@ -51,3 +51,7 @@ export async function scheduleHabitReminder(
 export async function cancelAllReminders(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
+
+export async function cancelScheduledReminder(id: string): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync(id);
+}

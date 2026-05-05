@@ -31,7 +31,7 @@ export default function AchievementsScreen() {
       }));
       setBadges(computed);
     }
-    setMilestones(getMilestones());
+    setMilestones(getMilestones(s));
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Alert, View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -25,8 +25,9 @@ export default function EditHabitScreen() {
 
   async function handleUpdate(data: Parameters<typeof updateHabitFull>[1]) {
     if (!id) return;
-    await updateHabitFull(id, data);
-    router.back();
+    const result = await updateHabitFull(id, data);
+    if (result.ok) router.back();
+    else Alert.alert("Could not save habit", result.error ?? "Try again.");
   }
 
   if (!habit) {

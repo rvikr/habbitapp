@@ -1,67 +1,69 @@
 import * as SecureStore from "expo-secure-store";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// SecureStore on iOS limits values to 2048 bytes. Supabase session tokens
-// can exceed that (~3-5KB), so we encrypt a key with SecureStore and store
-// the actual blob in AsyncStorage. This is the pattern Supabase recommends
-// for React Native + Expo.
-//
-// See: https://supabase.com/docs/guides/auth/quickstarts/react-native
+// SecureStore on iOS limits individual values to about 2048 bytes. Supabase
+// session payloads can exceed that, so large values are split across multiple
+// SecureStore entries instead of being stored in AsyncStorage.
+const CHUNK_SIZE = 1800;
+const VALID_KEY_RE = /^[A-Za-z0-9._-]+$/;
+const EMPTY_KEY = "habbit.secure.empty";
+const chunkCountKey = (key: string) => `${secureStoreKey(key)}.chunk-count`;
+const chunkKey = (key: string, index: number) => `${secureStoreKey(key)}.chunk.${index}`;
+
+function secureStoreKey(key: string): string {
+  if (!key) return EMPTY_KEY;
+  if (VALID_KEY_RE.test(key)) return key;
+  const sanitized = key.replace(/[^A-Za-z0-9._-]/g, "_");
+  return sanitized || EMPTY_KEY;
+}
 
 class LargeSecureStore {
   async getItem(key: string): Promise<string | null> {
-    const encryptionKey = await SecureStore.getItemAsync(`${key}-key`);
-    if (!encryptionKey) return null;
-    const value = await AsyncStorage.getItem(key);
-    if (!value) return null;
-    try {
-      return aesDecrypt(value, encryptionKey);
-    } catch {
-      return null;
+    const baseKey = secureStoreKey(key);
+    const countValue = await SecureStore.getItemAsync(chunkCountKey(key));
+    if (!countValue) {
+      return SecureStore.getItemAsync(baseKey);
     }
+
+    const count = Number(countValue);
+    if (!Number.isInteger(count) || count < 1) return null;
+
+    const chunks: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const chunk = await SecureStore.getItemAsync(chunkKey(key, i));
+      if (chunk == null) return null;
+      chunks.push(chunk);
+    }
+    return chunks.join("");
   }
 
   async setItem(key: string, value: string): Promise<void> {
-    const encryptionKey = generateRandomKey();
-    await SecureStore.setItemAsync(`${key}-key`, encryptionKey);
-    const encrypted = aesEncrypt(value, encryptionKey);
-    await AsyncStorage.setItem(key, encrypted);
+    const baseKey = secureStoreKey(key);
+    await this.removeItem(key);
+
+    if (value.length <= CHUNK_SIZE) {
+      await SecureStore.setItemAsync(baseKey, value);
+      return;
+    }
+
+    const chunks = value.match(new RegExp(`.{1,${CHUNK_SIZE}}`, "g")) ?? [];
+    await SecureStore.setItemAsync(chunkCountKey(key), String(chunks.length));
+    for (let i = 0; i < chunks.length; i++) {
+      await SecureStore.setItemAsync(chunkKey(key, i), chunks[i]);
+    }
   }
 
   async removeItem(key: string): Promise<void> {
-    await SecureStore.deleteItemAsync(`${key}-key`);
-    await AsyncStorage.removeItem(key);
-  }
-}
+    const baseKey = secureStoreKey(key);
+    const countValue = await SecureStore.getItemAsync(chunkCountKey(key));
+    await SecureStore.deleteItemAsync(baseKey);
+    await SecureStore.deleteItemAsync(chunkCountKey(key));
 
-// Lightweight XOR + base64 — real apps should use a proper AES library.
-// expo-crypto / react-native-aes-crypto are heavier but more secure.
-// For this app, the goal is "encrypted at rest" — XOR with a SecureStore-protected
-// random key satisfies that requirement against attackers without device access.
-function generateRandomKey(): string {
-  const arr = new Uint8Array(32);
-  for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
-  return Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function aesEncrypt(value: string, key: string): string {
-  const out: string[] = [];
-  for (let i = 0; i < value.length; i++) {
-    const v = value.charCodeAt(i);
-    const k = key.charCodeAt(i % key.length);
-    out.push((v ^ k).toString(16).padStart(4, "0"));
+    const count = Number(countValue);
+    if (!Number.isInteger(count) || count < 1) return;
+    for (let i = 0; i < count; i++) {
+      await SecureStore.deleteItemAsync(chunkKey(key, i));
+    }
   }
-  return out.join("");
-}
-
-function aesDecrypt(encrypted: string, key: string): string {
-  const out: string[] = [];
-  for (let i = 0; i < encrypted.length; i += 4) {
-    const v = parseInt(encrypted.slice(i, i + 4), 16);
-    const k = key.charCodeAt((i / 4) % key.length);
-    out.push(String.fromCharCode(v ^ k));
-  }
-  return out.join("");
 }
 
 export const secureStorage = new LargeSecureStore();

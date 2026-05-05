@@ -24,12 +24,12 @@
       "fallbackToCacheTimeout": 30000
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.habbitapp.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSUserNotificationsUsageDescription": "HabbitApp uses notifications to remind you about your habits.",
-        "NSUserTrackingUsageDescription": "We use anonymous analytics to understand which features are used so we can make HabbitApp better. No personal data is collected.",
+        "NSUserTrackingUsageDescription": "HabbitApp uses optional product analytics to understand feature usage and improve the app.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -43,8 +43,7 @@
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.VIBRATE",
-        "android.permission.SCHEDULE_EXACT_ALARM"
+        "android.permission.VIBRATE"
       ],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -71,7 +70,8 @@
         "expo-notifications",
         {
           "color": "#451ebb",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "icon": "./assets/notification-icon.png"
         }
       ],
       "expo-font",
@@ -79,7 +79,7 @@
       [
         "expo-updates",
         {
-          "username": "REPLACE_WITH_EXPO_USERNAME"
+          "username": "rk12333"
         }
       ],
       "@sentry/react-native",

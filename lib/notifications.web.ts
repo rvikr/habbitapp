@@ -18,5 +18,8 @@ export async function scheduleHabitReminder(
   return [];
 }
 
+export async function cancelScheduledReminder(id: string): Promise<void> {
+}
+
 export async function cancelAllReminders(): Promise<void> {
 }

@@ -3,21 +3,23 @@
 // to enable, and optionally EXPO_PUBLIC_POSTHOG_HOST (defaults to PostHog cloud).
 //
 // Events: prefer past-tense verbs ("habit_completed", "signed_in", "habit_created").
-// User identification happens automatically via supabase auth state change.
+// Events must not include personal data.
 
 const KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY;
 const HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
+export const ANALYTICS_OPT_OUT_KEY = "habbit:analytics-opt-out";
 
 let initialized = false;
 type PostHogClient = {
   capture: (event: string, properties?: Record<string, unknown>) => void;
-  identify: (id: string, properties?: Record<string, unknown>) => void;
   reset: () => void;
 };
 let client: PostHogClient | null = null;
+let optedOut = false;
 
 export async function initAnalytics(): Promise<void> {
-  if (initialized || !KEY) return;
+  optedOut = await readOptOut();
+  if (initialized || !KEY || optedOut) return;
   try {
     const mod = await import("posthog-react-native");
     const { PostHog } = mod;
@@ -30,16 +32,28 @@ export async function initAnalytics(): Promise<void> {
 
 export function track(event: string, properties?: Record<string, unknown>): void {
   if (__DEV__) console.log("[track]", event, properties);
-  if (!initialized || !client) return;
+  if (optedOut || !initialized || !client) return;
   client.capture(event, properties);
-}
-
-export function identify(userId: string, properties?: Record<string, unknown>): void {
-  if (!initialized || !client) return;
-  client.identify(userId, properties);
 }
 
 export function resetAnalytics(): void {
   if (!initialized || !client) return;
   client.reset();
+}
+
+export async function isAnalyticsOptedOut(): Promise<boolean> {
+  optedOut = await readOptOut();
+  return optedOut;
+}
+
+export async function setAnalyticsOptOut(next: boolean): Promise<void> {
+  optedOut = next;
+  const { setItem } = await import("@/lib/storage");
+  await setItem(ANALYTICS_OPT_OUT_KEY, String(next));
+  if (next) resetAnalytics();
+}
+
+async function readOptOut(): Promise<boolean> {
+  const { getItem } = await import("@/lib/storage");
+  return (await getItem(ANALYTICS_OPT_OUT_KEY)) === "true";
 }

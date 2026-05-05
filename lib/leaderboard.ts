@@ -50,7 +50,7 @@ export async function setDisplayName(displayName: string | null): Promise<{ ok: 
   if (!user) return { ok: false, error: "Not signed in" };
   // Use the user's avatar metadata so the leaderboard avatars match the in-app avatar.
   const avatarStyle = (user.user_metadata?.avatar_style as string | undefined) ?? "avataaars";
-  const avatarSeed = (user.user_metadata?.avatar_seed as string | undefined) ?? user.email?.split("@")[0] ?? "Aspen";
+  const avatarSeed = (user.user_metadata?.avatar_seed as string | undefined) ?? user.id.slice(0, 12);
   const { error } = await supabase.from("profiles").upsert({
     user_id: user.id,
     display_name: displayName,

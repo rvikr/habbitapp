@@ -18,8 +18,8 @@ npm install --legacy-peer-deps
 cp .env.local.example .env.local
 # Edit .env.local with your Supabase project URL/key
 
-# 3. Apply DB schema (one time, in Supabase SQL editor)
-# Paste contents of supabase/schema.sql
+# 3. Apply DB schema + migrations (one time, in Supabase SQL editor)
+# Run supabase/schema.sql, then each file in supabase/migrations/ in order
 
 # 4. Run
 npx expo start
@@ -36,6 +36,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 EXPO_PUBLIC_SENTRY_DSN=                # optional — leave empty to disable crash reporting
 EXPO_PUBLIC_POSTHOG_KEY=               # optional — leave empty to disable analytics
 EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+EXPO_PUBLIC_PRIVACY_POLICY_URL=https://your-domain.example/privacy
 ```
 
 All `EXPO_PUBLIC_*` vars are bundled into the client at build time. Don't put service-role
@@ -76,8 +77,8 @@ lib/                       Shared logic (no UI)
 types/db.ts                Shared TypeScript types (Habit, HabitCompletion, Badge)
 supabase/schema.sql        Postgres schema + RLS policies
 
-assets/                    App icons, splash, etc. (you provide PNGs — see SHIPPING.md)
-public/                    Web-only static files (manifest, favicon)
+assets/                    App icons, splash, notification icon, share image
+public/                    Web-only static files (manifest, favicon, PWA icons, OG image)
 ```
 
 The platform-specific files (`*.native.ts` / `*.web.ts`) are picked automatically by Metro
@@ -128,8 +129,8 @@ See **`QA.md`** for the manual test plan to run through every release.
 
 - **Auth tokens** stored via `expo-secure-store` (native) or `localStorage` (web) using
   the `secureStorage` adapter in `lib/secure-storage.{native,web}.ts`.
-- **Demo mode**: when `EXPO_PUBLIC_SUPABASE_URL` is empty, `isSupabaseConfigured()` returns
-  false and screens show empty states instead of crashing.
+- **Configuration guard**: when Supabase environment variables are missing, the app shows
+  a clear configuration error instead of crashing during startup.
 - **Theme**: `ThemeProvider` reads system color scheme by default and persists user override
   in storage. NativeWind's `dark:` modifier handles the rest.
 - **Error handling**: `ErrorBoundary` at the root catches uncaught render errors, forwards

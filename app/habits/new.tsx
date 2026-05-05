@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { Alert, View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -11,6 +11,7 @@ export default function NewHabitScreen() {
   async function handleCreate(data: Parameters<typeof createHabit>[0]) {
     const result = await createHabit(data);
     if (result.ok) router.replace("/");
+    else Alert.alert("Could not create habit", result.error ?? "Try again.");
   }
 
   return (

@@ -4,6 +4,7 @@ import Icon from "./icon";
 import HabitCatalogPicker from "./habit-catalog-picker";
 import type { Habit } from "@/types/db";
 import type { CatalogEntry } from "@/lib/habit-catalog";
+import { isValidReminderTime, parseOptionalPositiveNumber } from "@/lib/validation";
 
 const ICONS = ["water_drop", "directions_run", "directions_walk", "menu_book", "self_improvement", "edit_note", "fitness_center", "bedtime", "medication", "restaurant", "shower", "code", "directions_bike", "favorite", "eco", "spa"];
 const COLORS: Array<{ id: "primary" | "secondary" | "tertiary" | "neutral"; label: string; hex: string }> = [
@@ -47,6 +48,7 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
   const [reminderDays, setReminderDays] = useState<number[]>(initial?.reminder_days ?? [0, 1, 2, 3, 4, 5, 6]);
   const [customTime, setCustomTime] = useState("");
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   function applyTemplate(entry: CatalogEntry) {
     setName(entry.name);
@@ -68,9 +70,13 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
 
   function addCustomTime() {
     const t = customTime.trim();
-    if (!/^\d{2}:\d{2}$/.test(t)) return;
+    if (!isValidReminderTime(t)) {
+      setFormError("Use a valid 24-hour time, for example 08:30.");
+      return;
+    }
     if (!reminderTimes.includes(t)) setReminderTimes((prev) => [...prev, t].sort());
     setCustomTime("");
+    setFormError(null);
   }
 
   function toggleDay(day: number) {
@@ -79,6 +85,24 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
 
   async function handleSubmit() {
     if (!name.trim()) return;
+    const parsedTarget = parseOptionalPositiveNumber(target);
+    if (!parsedTarget.ok) {
+      setFormError(parsedTarget.error);
+      return;
+    }
+    if (remindersEnabled && reminderTimes.length === 0) {
+      setFormError("Add at least one reminder time or turn reminders off.");
+      return;
+    }
+    if (remindersEnabled && reminderTimes.some((time) => !isValidReminderTime(time))) {
+      setFormError("Use valid 24-hour reminder times.");
+      return;
+    }
+    if (reminderDays.some((day) => day < 0 || day > 6)) {
+      setFormError("Choose valid reminder days.");
+      return;
+    }
+    setFormError(null);
     setLoading(true);
     await onSubmit({
       name: name.trim(),
@@ -86,7 +110,7 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
       icon,
       color,
       unit: unit.trim(),
-      target: target ? parseFloat(target) : null,
+      target: parsedTarget.value,
       remindersEnabled,
       reminderTimes: remindersEnabled ? reminderTimes : [],
       reminderDays: remindersEnabled ? (reminderDays.length > 0 ? reminderDays : [0, 1, 2, 3, 4, 5, 6]) : [0, 1, 2, 3, 4, 5, 6],
@@ -248,8 +272,8 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
                 <TouchableOpacity
                   className="bg-primary px-md py-xs rounded-full"
                   onPress={addCustomTime}
-                  disabled={!/^\d{2}:\d{2}$/.test(customTime)}
-                  style={{ opacity: /^\d{2}:\d{2}$/.test(customTime) ? 1 : 0.4 }}
+                  disabled={!isValidReminderTime(customTime)}
+                  style={{ opacity: isValidReminderTime(customTime) ? 1 : 0.4 }}
                 >
                   <Text className="text-on-primary text-label-lg">Add</Text>
                 </TouchableOpacity>
@@ -273,6 +297,8 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
             </>
           )}
         </View>
+
+        {formError && <Text className="text-error text-label-sm text-center">{formError}</Text>}
 
         {/* Submit */}
         <TouchableOpacity

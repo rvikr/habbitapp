@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "media",
+  darkMode: "class",
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -97,12 +97,12 @@ const config: Config = {
       },
       fontSize: {
         "label-sm": ["12px", { lineHeight: "16px", fontWeight: "500" }],
-        "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0.01em", fontWeight: "600" }],
+        "label-lg": ["14px", { lineHeight: "20px", letterSpacing: "0", fontWeight: "600" }],
         "body-md": ["16px", { lineHeight: "24px", fontWeight: "400" }],
         "body-lg": ["18px", { lineHeight: "26px", fontWeight: "400" }],
         "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
-        "headline-lg": ["28px", { lineHeight: "36px", letterSpacing: "-0.01em", fontWeight: "700" }],
-        "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "700" }],
+        "headline-lg": ["28px", { lineHeight: "36px", letterSpacing: "0", fontWeight: "700" }],
+        "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "0", fontWeight: "700" }],
       },
     },
   },

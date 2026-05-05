@@ -36,10 +36,7 @@ create policy "profiles: owner update"
   with check (auth.uid() = user_id);
 
 -- Public leaderboard view: aggregates stats per opted-in user.
--- security_invoker=true makes the view honour the caller's RLS, so the
--- "display_name is not null" policy on profiles enforces opt-in.
 create or replace view public.leaderboard
-with (security_invoker = true)
 as
 select
   p.user_id,
@@ -63,6 +60,8 @@ left join lateral (
   where user_id = p.user_id and archived_at is null
 ) h on true
 where p.display_name is not null;
+
+grant select on public.leaderboard to authenticated;
 
 -- Auto-create a profile row on signup so the user can later set a display_name.
 create or replace function public.handle_new_user()

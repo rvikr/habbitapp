@@ -34,7 +34,7 @@ export function reportError(
   SentryRef.captureException(error, { extra: context });
 }
 
-export function setUser(user: { id: string; email?: string } | null): void {
+export function setUser(user: { id?: string } | null): void {
   if (!initialized || !SentryRef) return;
   SentryRef.setUser(user);
 }

@@ -7,6 +7,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="profile" />
       <Stack.Screen name="reminders" />
       <Stack.Screen name="security" />
+      <Stack.Screen name="privacy" />
     </Stack>
   );
 }

@@ -21,7 +21,7 @@ export default function ProfileScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled || !user) return;
       setStyle((user.user_metadata?.avatar_style as AvatarStyle) ?? "avataaars");
-      setSeed((user.user_metadata?.avatar_seed as string) ?? user.email?.split("@")[0] ?? "Aspen");
+      setSeed((user.user_metadata?.avatar_seed as string) ?? user.id.slice(0, 12));
     })();
     return () => { cancelled = true; };
   }, []);

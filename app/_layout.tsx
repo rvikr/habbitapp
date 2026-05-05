@@ -1,6 +1,6 @@
 import "../global.css";
 import { useEffect } from "react";
-import { Platform, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans";
@@ -8,9 +8,10 @@ import { StatusBar } from "expo-status-bar";
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { CelebrationProvider } from "@/components/celebration";
 import ErrorBoundary from "@/components/error-boundary";
-import { supabase } from "@/lib/supabase/client";
+import NotificationScheduler from "@/components/notification-scheduler";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { initSentry, setUser as setSentryUser } from "@/lib/sentry";
-import { initAnalytics, identify as identifyAnalytics } from "@/lib/analytics";
+import { initAnalytics } from "@/lib/analytics";
 
 function AuthGuard() {
   const segments = useSegments();
@@ -18,15 +19,14 @@ function AuthGuard() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const inAuthGroup = segments[0] === "login";
-      if (!session && !inAuthGroup) {
+      const publicRoute = ["login", "auth", "reset-password", "account-deletion"].includes(String(segments[0] ?? ""));
+      if (!session && !publicRoute) {
         router.replace("/login");
-      } else if (session && inAuthGroup) {
+      } else if (session && segments[0] === "login") {
         router.replace("/");
       }
       if (session?.user) {
-        setSentryUser({ id: session.user.id, email: session.user.email });
-        identifyAnalytics(session.user.id, { email: session.user.email });
+        setSentryUser(null);
       } else {
         setSentryUser(null);
       }
@@ -37,12 +37,41 @@ function AuthGuard() {
   return null;
 }
 
+function ConfigurationError() {
+  return (
+    <View className="flex-1 bg-background dark:bg-d-background items-center justify-center px-margin-mobile">
+      <View className="w-16 h-16 rounded-full bg-error-container items-center justify-center mb-lg">
+        <Text className="text-headline-lg text-on-error-container">!</Text>
+      </View>
+      <Text className="text-headline-md text-on-background dark:text-d-on-background font-bold mb-sm text-center">
+        Configuration error
+      </Text>
+      <Text className="text-body-md text-on-surface-variant dark:text-d-on-surface-variant text-center">
+        Supabase is not configured. Set{"\n"}EXPO_PUBLIC_SUPABASE_URL and{"\n"}EXPO_PUBLIC_SUPABASE_ANON_KEY in .env.local.
+      </Text>
+    </View>
+  );
+}
+
 function RootLayoutContent() {
   const { colorScheme } = useTheme();
+
+  if (!isSupabaseConfigured()) {
+    return (
+      <>
+        <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+        <ConfigurationError />
+      </>
+    );
+  }
+
   const stack = (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+      <Stack.Screen name="reset-password" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="account-deletion" options={{ headerShown: false }} />
       <Stack.Screen name="habits/new" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="habits/[id]/index" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="habits/[id]/edit" options={{ headerShown: false, presentation: "card" }} />
@@ -53,6 +82,7 @@ function RootLayoutContent() {
     <>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
       <AuthGuard />
+      <NotificationScheduler />
       {Platform.OS === "web" ? <WebFrame>{stack}</WebFrame> : stack}
     </>
   );

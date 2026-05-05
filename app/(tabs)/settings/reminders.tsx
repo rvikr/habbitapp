@@ -1,11 +1,12 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Switch } from "react-native";
+import { Alert, View, Text, ScrollView, TouchableOpacity, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getHabitsForToday } from "@/lib/habits";
 import { updateHabitReminders } from "@/lib/actions";
 import { requestPermission, getPermissionStatus } from "@/lib/notifications";
+import { syncScheduledReminders } from "@/lib/reminder-sync";
 import type { Habit } from "@/types/db";
 
 const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -27,15 +28,34 @@ export default function RemindersScreen() {
   async function handleRequestPermission() {
     const granted = await requestPermission();
     setPermission(granted ? "granted" : "denied");
+    if (granted) await syncScheduledReminders();
   }
 
   async function handleToggle(habit: Habit) {
     const enabled = !habit.reminders_enabled;
-    await updateHabitReminders(habit.id, {
+    if (enabled && permission !== "granted") {
+      const granted = await requestPermission();
+      setPermission(granted ? "granted" : "denied");
+      if (!granted) {
+        Alert.alert("Notifications are disabled", "Enable notifications before turning on reminders.");
+        return;
+      }
+    }
+
+    if (enabled && (habit.reminder_times ?? []).length === 0) {
+      Alert.alert("Add a reminder time", "Edit the habit and add at least one reminder time first.");
+      return;
+    }
+
+    const result = await updateHabitReminders(habit.id, {
       enabled,
       times: habit.reminder_times ?? [],
       days: habit.reminder_days ?? [0, 1, 2, 3, 4, 5, 6],
     });
+    if (!result.ok) {
+      Alert.alert("Could not update reminders", result.error ?? "Try again.");
+      return;
+    }
     setHabits((prev) => prev.map((h) => h.id === habit.id ? { ...h, reminders_enabled: enabled } : h));
   }
 

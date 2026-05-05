@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { Alert, View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -31,8 +31,17 @@ export default function SettingsScreen() {
   const load = useCallback(async () => {
     const { data: { user: u } } = await supabase.auth.getUser();
     if (u) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", u.id)
+        .maybeSingle();
       setUser({
-        displayName: (u.user_metadata?.full_name as string | undefined) ?? u.email?.split("@")[0] ?? "there",
+        displayName:
+          (profile?.display_name as string | null | undefined) ??
+          (u.user_metadata?.full_name as string | undefined) ??
+          u.email?.split("@")[0] ??
+          "there",
         email: u.email ?? null,
         avatarUrl: avatarFromUser(u),
       });
@@ -42,7 +51,10 @@ export default function SettingsScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function handleSignOut() {
-    await signOut();
+    Alert.alert("Sign out?", "You can sign back in any time.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Sign out", style: "destructive", onPress: () => signOut() },
+    ]);
   }
 
   return (
@@ -95,6 +107,7 @@ export default function SettingsScreen() {
           <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mb-sm">ACCOUNT</Text>
           <SettingsRow icon="bell" label="Reminders" onPress={() => router.push("/settings/reminders")} />
           <SettingsRow icon="shield-lock" label="Security" onPress={() => router.push("/settings/security")} />
+          <SettingsRow icon="database-lock" label="Privacy & Data" onPress={() => router.push("/settings/privacy" as never)} />
         </View>
 
         {/* Danger */}

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
+import { Alert, View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -10,6 +10,7 @@ import Icon from "@/components/icon";
 import LogEntryFab from "@/components/log-entry-fab";
 import LogPrompt from "@/components/log-prompt";
 import type { Habit, HabitCompletion } from "@/types/db";
+import { localDateKey } from "@/lib/date";
 
 const COLOR_BG: Record<string, string> = { primary: "#e6deff", secondary: "#76f6f2", tertiary: "#ffdbce", neutral: "#e1e3e4" };
 const COLOR_FG: Record<string, string> = { primary: "#451ebb", secondary: "#006a67", tertiary: "#7b2900", neutral: "#484554" };
@@ -34,7 +35,7 @@ export default function HabitDetailScreen() {
 
   const onRefresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateKey();
   const doneToday = completions.some((c) => c.completed_on === today);
   const streak = streakFor(completions);
   const weekDays = habit ? weekProgressFor(habit.id, completions) : [];
@@ -42,13 +43,18 @@ export default function HabitDetailScreen() {
   async function handleToggle() {
     if (!habit) return;
     if (!doneToday) celebrate();
-    await toggleHabit(habit.id, doneToday);
+    const result = await toggleHabit(habit.id, doneToday);
+    if (!result.ok) Alert.alert("Could not update habit", result.error ?? "Try again.");
     load();
   }
 
   async function handleLog(value: number, note: string) {
     if (!habit) return;
-    await logCompletion(habit.id, value);
+    const result = await logCompletion(habit.id, value, note);
+    if (!result.ok) {
+      Alert.alert("Could not log progress", result.error ?? "Try again.");
+      return;
+    }
     setShowLogPrompt(false);
     celebrate();
     load();
@@ -56,8 +62,21 @@ export default function HabitDetailScreen() {
 
   async function handleDelete() {
     if (!habit) return;
-    await deleteHabit(habit.id);
-    router.replace("/");
+    Alert.alert("Delete habit?", "This archives the habit and cancels its reminders.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const result = await deleteHabit(habit.id);
+          if (!result.ok) {
+            Alert.alert("Could not delete habit", result.error ?? "Try again.");
+            return;
+          }
+          router.replace("/");
+        },
+      },
+    ]);
   }
 
   if (!habit) return null;
