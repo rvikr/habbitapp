@@ -23,6 +23,7 @@ export default function HabitDetailScreen() {
   const [completions, setCompletions] = useState<HabitCompletion[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showLogPrompt, setShowLogPrompt] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -41,11 +42,16 @@ export default function HabitDetailScreen() {
   const weekDays = habit ? weekProgressFor(habit.id, completions) : [];
 
   async function handleToggle() {
-    if (!habit) return;
-    if (!doneToday) celebrate();
-    const result = await toggleHabit(habit.id, doneToday);
-    if (!result.ok) Alert.alert("Could not update habit", result.error ?? "Try again.");
-    load();
+    if (!habit || toggling) return;
+    setToggling(true);
+    try {
+      if (!doneToday) celebrate();
+      const result = await toggleHabit(habit.id, doneToday);
+      if (!result.ok) Alert.alert("Could not update habit", result.error ?? "Try again.");
+      load();
+    } finally {
+      setToggling(false);
+    }
   }
 
   async function handleLog(value: number, note: string) {
@@ -155,6 +161,7 @@ export default function HabitDetailScreen() {
           <TouchableOpacity
             className={`rounded-full py-sm items-center ${doneToday ? "bg-secondary" : "bg-primary"}`}
             onPress={handleToggle}
+            disabled={toggling}
           >
             <Text className="text-on-primary text-label-lg font-semibold">
               {doneToday ? "Mark as undone" : "Mark as done today"}

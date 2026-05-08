@@ -1,5 +1,11 @@
 import { useState, useCallback } from "react";
-import { Alert, View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import Constants from "expo-constants";
+import { requestReviewManually } from "@/lib/store-review";
+
+const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL;
+const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL;
+const APP_VERSION = Constants.expoConfig?.version ?? "—";
+import { Alert, Linking, View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -70,7 +76,7 @@ export default function SettingsScreen() {
           onPress={() => router.push("/settings/profile")}
         >
           {user?.avatarUrl ? (
-            <Image source={{ uri: user.avatarUrl }} className="w-14 h-14 rounded-full" />
+            <Image source={{ uri: user.avatarUrl }} className="w-14 h-14 rounded-full" resizeMode="cover" />
           ) : (
             <View className="w-14 h-14 rounded-full bg-primary-fixed items-center justify-center">
               <MaterialCommunityIcons name="account" size={28} color="#451ebb" />
@@ -107,14 +113,27 @@ export default function SettingsScreen() {
           <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mb-sm">ACCOUNT</Text>
           <SettingsRow icon="bell" label="Reminders" onPress={() => router.push("/settings/reminders")} />
           <SettingsRow icon="message-alert-outline" label="Send Feedback" onPress={() => router.push("/settings/feedback" as never)} />
+          <SettingsRow icon="star-outline" label="Rate Lagan" onPress={() => requestReviewManually()} />
+          <SettingsRow icon="email-outline" label="Contact Support" onPress={() => {
+            if (!SUPPORT_EMAIL) { Alert.alert("Not configured", "Set EXPO_PUBLIC_SUPPORT_EMAIL in your environment."); return; }
+            Linking.openURL(`mailto:${SUPPORT_EMAIL}`);
+          }} />
           <SettingsRow icon="shield-lock" label="Security" onPress={() => router.push("/settings/security")} />
           <SettingsRow icon="database-lock" label="Privacy & Data" onPress={() => router.push("/settings/privacy" as never)} />
+          <SettingsRow icon="file-document-outline" label="Terms & Conditions" onPress={() => {
+            if (!TERMS_URL) { Alert.alert("Not configured", "Set EXPO_PUBLIC_TERMS_URL in your environment."); return; }
+            Linking.openURL(TERMS_URL);
+          }} />
         </View>
 
         {/* Danger */}
         <View className="px-margin-mobile">
           <SettingsRow icon="logout" label="Sign out" onPress={handleSignOut} danger />
         </View>
+
+        <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant text-center mt-lg">
+          Version {APP_VERSION}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );

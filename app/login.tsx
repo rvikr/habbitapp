@@ -37,6 +37,8 @@ export default function LoginScreen() {
         if (e) setError(e.message);
         else setMessage("Check your email to confirm your account, then sign in.");
       }
+    } catch {
+      setError("Network error. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -53,7 +55,7 @@ export default function LoginScreen() {
               <View className="w-16 h-16 rounded-full bg-primary items-center justify-center mb-lg">
                 <Ionicons name="sunny" size={28} color="#ffffff" />
               </View>
-              <Text className="text-headline-lg text-on-background dark:text-d-on-background font-bold">HabbitApp</Text>
+              <Text className="text-headline-lg text-on-background dark:text-d-on-background font-bold">Lagan लगन</Text>
               <Text className="text-headline-md text-primary font-semibold mt-xs">
                 {mode === "signin" ? "Welcome back" : "Create account"}
               </Text>
@@ -148,7 +150,7 @@ export default function LoginScreen() {
                   </TouchableOpacity>
                 ) : null}
                 <Text className="text-label-sm text-outline">·</Text>
-                <Text className="text-label-sm text-outline">© 2025 HabbitApp</Text>
+                <Text className="text-label-sm text-outline">© 2025 Lagan</Text>
               </View>
             </View>
 

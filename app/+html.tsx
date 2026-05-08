@@ -9,22 +9,22 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="HabbitApp" />
+        <meta name="apple-mobile-web-app-title" content="Lagan" />
         <meta name="theme-color" content="#451ebb" />
         <meta name="mobile-web-app-capable" content="yes" />
 
-        <title>HabbitApp — Build habits, track progress, earn badges</title>
+        <title>Lagan लगन — Build habits, track progress, earn badges</title>
         <meta name="description" content="Track your daily habits, build streaks, and unlock achievements. Cross-platform on iOS, Android, and web." />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="HabbitApp" />
+        <meta property="og:title" content="Lagan लगन" />
         <meta property="og:description" content="Build habits, track progress, earn badges." />
         <meta property="og:image" content="/og-image.png" />
 
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="HabbitApp" />
+        <meta name="twitter:title" content="Lagan लगन" />
         <meta name="twitter:description" content="Build habits, track progress, earn badges." />
 
         {/* PWA */}

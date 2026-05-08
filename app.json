@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "HabbitApp",
+    "name": "Lagan लगन",
     "slug": "habbitapp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -28,8 +28,8 @@
       "bundleIdentifier": "com.habbitapp.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSUserNotificationsUsageDescription": "HabbitApp uses notifications to remind you about your habits.",
-        "NSUserTrackingUsageDescription": "HabbitApp uses optional product analytics to understand feature usage and improve the app.",
+        "NSUserNotificationsUsageDescription": "Lagan uses notifications to remind you about your habits.",
+        "NSUserTrackingUsageDescription": "Lagan uses optional product analytics to understand feature usage and improve the app.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -54,8 +54,8 @@
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/favicon.png",
-      "name": "HabbitApp",
-      "shortName": "HabbitApp",
+      "name": "Lagan लगन",
+      "shortName": "Lagan",
       "description": "Build habits, track progress, earn badges.",
       "themeColor": "#451ebb",
       "backgroundColor": "#f8f9fa",

@@ -139,7 +139,7 @@ function LeaderboardRow({ entry, rank, isMe }: { entry: LeaderboardEntry; rank: 
       <View className="w-8 items-center">
         {medal ? <Text className="text-headline-md">{medal}</Text> : <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant font-semibold">{rank}</Text>}
       </View>
-      <Image source={{ uri: url }} className="w-10 h-10 rounded-full bg-primary-fixed" />
+      <Image source={{ uri: url }} className="w-10 h-10 rounded-full bg-primary-fixed" resizeMode="cover" />
       <View className="flex-1">
         <Text className="text-body-md text-on-surface dark:text-d-on-surface font-semibold" numberOfLines={1}>
           {entry.display_name}{isMe ? " (you)" : ""}

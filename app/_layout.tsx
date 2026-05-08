@@ -1,7 +1,7 @@
 import "../global.css";
 import { useEffect, useRef, useState } from "react";
 import { Platform, Text, View } from "react-native";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans";
 import { StatusBar } from "expo-status-bar";
@@ -12,9 +12,17 @@ import ErrorBoundary from "@/components/error-boundary";
 import NotificationScheduler from "@/components/notification-scheduler";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { initSentry, setUser as setSentryUser } from "@/lib/sentry";
-import { initAnalytics } from "@/lib/analytics";
+import { initAnalytics, track } from "@/lib/analytics";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function ScreenTracker() {
+  const pathname = usePathname();
+  useEffect(() => {
+    track("screen_viewed", { screen: pathname });
+  }, [pathname]);
+  return null;
+}
 
 function AuthGuard({ onReady }: { onReady: () => void }) {
   const segments = useSegments();
@@ -129,6 +137,7 @@ function RootLayoutContent() {
   return (
     <>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <ScreenTracker />
       <AuthGuard onReady={() => setIsAuthReady(true)} />
       <NotificationScheduler />
       {Platform.OS === "web" ? <WebFrame>{stack}</WebFrame> : stack}

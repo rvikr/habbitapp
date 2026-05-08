@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Icon from "./icon";
@@ -9,13 +10,25 @@ const COLOR_FG: Record<string, string> = { primary: "#451ebb", secondary: "#006a
 type Props = {
   habit: Habit;
   done: boolean;
-  onToggle: () => void;
+  onToggle: () => void | Promise<void>;
   onPress: () => void;
 };
 
 export default function HabitCard({ habit, done, onToggle, onPress }: Props) {
+  const [toggling, setToggling] = useState(false);
   const bg = COLOR_BG[habit.color] ?? "#e6deff";
   const fg = COLOR_FG[habit.color] ?? "#451ebb";
+
+  async function handleToggleTap(e: { stopPropagation: () => void }) {
+    e.stopPropagation();
+    if (toggling) return;
+    setToggling(true);
+    try {
+      await onToggle();
+    } finally {
+      setToggling(false);
+    }
+  }
 
   return (
     <TouchableOpacity
@@ -38,7 +51,8 @@ export default function HabitCard({ habit, done, onToggle, onPress }: Props) {
         )}
       </View>
       <TouchableOpacity
-        onPress={(e) => { e.stopPropagation(); onToggle(); }}
+        onPress={handleToggleTap}
+        disabled={toggling}
         className="w-8 h-8 rounded-full items-center justify-center"
         style={{ backgroundColor: done ? fg : "transparent", borderWidth: 2, borderColor: done ? fg : "#c9c4d7" }}
       >

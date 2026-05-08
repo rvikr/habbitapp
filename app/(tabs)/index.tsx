@@ -6,6 +6,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getHabitsForToday } from "@/lib/habits";
 import { toggleHabit } from "@/lib/actions";
 import { useCelebrate } from "@/components/celebration";
+import { useTheme } from "@/components/theme-provider";
+import { recordCompletionAndMaybeReview } from "@/lib/store-review";
 import ProgressRing from "@/components/progress-ring";
 import HabitCard from "@/components/habit-card";
 import type { Habit } from "@/types/db";
@@ -19,6 +21,9 @@ type DashboardData = {
 export default function DashboardScreen() {
   const router = useRouter();
   const celebrate = useCelebrate();
+  const { colorScheme } = useTheme();
+  const primary = colorScheme === "dark" ? "#c5b8ff" : "#451ebb";
+  const primaryTrack = colorScheme === "dark" ? "#3d3450" : "#c9c4d7";
   const [data, setData] = useState<DashboardData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -46,6 +51,8 @@ export default function DashboardScreen() {
     if (!result.ok) {
       setData(data);
       Alert.alert("Could not update habit", result.error ?? "Try again.");
+    } else if (!wasDone) {
+      recordCompletionAndMaybeReview();
     }
   }
 
@@ -75,13 +82,13 @@ export default function DashboardScreen() {
             className="w-10 h-10 rounded-full bg-primary-fixed items-center justify-center"
             onPress={() => router.push("/habits/new")}
           >
-            <MaterialCommunityIcons name="plus" size={22} color="#451ebb" />
+            <MaterialCommunityIcons name="plus" size={22} color={primary} />
           </TouchableOpacity>
         </View>
 
         {/* Progress ring */}
         <View className="items-center py-lg">
-          <ProgressRing progress={progress} size={140} strokeWidth={10}>
+          <ProgressRing progress={progress} size={140} strokeWidth={10} color={primary} trackColor={primaryTrack}>
             <Text className="text-headline-xl text-primary font-bold">{completedCount}</Text>
             <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">of {total}</Text>
           </ProgressRing>
@@ -98,7 +105,7 @@ export default function DashboardScreen() {
               className="bg-surface-container dark:bg-d-surface-container rounded-xl p-lg items-center gap-sm"
               onPress={() => router.push("/habits/new")}
             >
-              <MaterialCommunityIcons name="plus-circle-outline" size={40} color="#451ebb" />
+              <MaterialCommunityIcons name="plus-circle-outline" size={40} color={primary} />
               <Text className="text-body-md text-on-surface dark:text-d-on-surface font-semibold">Add your first habit</Text>
               <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant text-center">
                 Tap to browse the habit catalog or create a custom one.
