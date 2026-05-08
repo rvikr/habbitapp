@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal, Linking } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { signIn, signUp, resetPassword } from "@/lib/actions";
 import { validatePassword } from "@/lib/password";
@@ -45,43 +46,77 @@ export default function LoginScreen() {
     <SafeAreaView className="flex-1 bg-background dark:bg-d-background">
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-          <View className="flex-1 justify-center px-margin-mobile py-xxl">
-            <View className="mb-xxl items-center">
+          <View className="flex-1 px-margin-mobile py-xxl">
+
+            {/* Header */}
+            <View className="items-center mb-xxl">
               <View className="w-16 h-16 rounded-full bg-primary items-center justify-center mb-lg">
-                <Text className="text-headline-lg text-on-primary">H</Text>
+                <Ionicons name="sunny" size={28} color="#ffffff" />
               </View>
               <Text className="text-headline-lg text-on-background dark:text-d-on-background font-bold">HabbitApp</Text>
+              <Text className="text-headline-md text-primary font-semibold mt-xs">
+                {mode === "signin" ? "Welcome back" : "Create account"}
+              </Text>
               <Text className="text-body-md text-on-surface-variant dark:text-d-on-surface-variant mt-xs text-center">
-                Build habits, track progress, earn badges.
+                {mode === "signin"
+                  ? "Let's keep the momentum going and start your day with intention."
+                  : "Start building better habits today."}
               </Text>
             </View>
 
-            <View className="gap-sm">
-              <TextInput
-                className="bg-surface-container dark:bg-d-surface-container text-on-surface dark:text-d-on-surface rounded-xl px-md py-sm text-body-md"
-                placeholder="Email"
-                placeholderTextColor="#797586"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                textContentType="emailAddress"
-              />
-              <TextInput
-                className="bg-surface-container dark:bg-d-surface-container text-on-surface dark:text-d-on-surface rounded-xl px-md py-sm text-body-md"
-                placeholder={mode === "signup" ? "Password (12+ chars, mixed case + number)" : "Password"}
-                placeholderTextColor="#797586"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                textContentType={mode === "signup" ? "newPassword" : "password"}
-              />
+            {/* Form */}
+            <View className="gap-md">
+              <View className="gap-xs">
+                <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant font-semibold">Email</Text>
+                <TextInput
+                  className="bg-surface-container dark:bg-d-surface-container text-on-surface dark:text-d-on-surface rounded-xl px-md py-sm text-body-md"
+                  placeholder="you@example.com"
+                  placeholderTextColor="#797586"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="emailAddress"
+                />
+              </View>
 
-              {error && <Text className="text-error text-label-sm text-center">{error}</Text>}
-              {message && <Text className="text-secondary text-label-sm text-center">{message}</Text>}
+              <View className="gap-xs">
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant font-semibold">Password</Text>
+                  {mode === "signin" && (
+                    <TouchableOpacity onPress={() => setShowForgot(true)}>
+                      <Text className="text-primary text-label-sm font-semibold">Forgot password?</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <TextInput
+                  className="bg-surface-container dark:bg-d-surface-container text-on-surface dark:text-d-on-surface rounded-xl px-md py-sm text-body-md"
+                  placeholder={mode === "signup" ? "12+ chars, mixed case + number" : "••••••••"}
+                  placeholderTextColor="#797586"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  textContentType={mode === "signup" ? "newPassword" : "password"}
+                />
+              </View>
 
-              <TouchableOpacity className="bg-primary rounded-full py-sm items-center mt-sm" onPress={handleSubmit} disabled={loading}>
+              {error && (
+                <View className="bg-error-container rounded-xl px-md py-sm">
+                  <Text className="text-on-error-container text-label-sm">{error}</Text>
+                </View>
+              )}
+              {message && (
+                <View className="bg-secondary-container rounded-xl px-md py-sm">
+                  <Text className="text-on-secondary-container text-label-sm">{message}</Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                className="bg-primary rounded-full py-md items-center mt-xs"
+                onPress={handleSubmit}
+                disabled={loading}
+              >
                 {loading ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
@@ -91,18 +126,32 @@ export default function LoginScreen() {
                 )}
               </TouchableOpacity>
 
-              {mode === "signin" && (
-                <TouchableOpacity className="items-center mt-xs" onPress={() => setShowForgot(true)}>
-                  <Text className="text-on-surface-variant dark:text-d-on-surface-variant text-label-sm">Forgot password?</Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity className="items-center mt-sm" onPress={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(null); setMessage(null); }}>
-                <Text className="text-primary text-label-lg">
-                  {mode === "signin" ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+              <TouchableOpacity
+                className="items-center py-sm"
+                onPress={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(null); setMessage(null); }}
+              >
+                <Text className="text-on-surface-variant dark:text-d-on-surface-variant text-label-lg">
+                  {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
+                  <Text className="text-primary font-semibold">
+                    {mode === "signin" ? "Sign up" : "Sign in"}
+                  </Text>
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Footer */}
+            <View className="mt-xxl items-center gap-sm">
+              <View className="flex-row items-center gap-md">
+                {process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ? (
+                  <TouchableOpacity onPress={() => Linking.openURL(process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL!)}>
+                    <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">Privacy Policy</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <Text className="text-label-sm text-outline">·</Text>
+                <Text className="text-label-sm text-outline">© 2025 HabbitApp</Text>
+              </View>
+            </View>
+
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -1,10 +1,11 @@
 import "../global.css";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Platform, Text, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { CelebrationProvider } from "@/components/celebration";
 import ErrorBoundary from "@/components/error-boundary";
@@ -13,26 +14,58 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
 import { initSentry, setUser as setSentryUser } from "@/lib/sentry";
 import { initAnalytics } from "@/lib/analytics";
 
-function AuthGuard() {
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+function AuthGuard({ onReady }: { onReady: () => void }) {
   const segments = useSegments();
   const router = useRouter();
+  // Keep a ref so the evaluate closure always reads the latest segments
+  // even though the effect runs only once.
+  const segmentsRef = useRef(segments);
+  segmentsRef.current = segments;
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const publicRoute = ["login", "auth", "reset-password", "account-deletion"].includes(String(segments[0] ?? ""));
+    let mounted = true;
+
+    function evaluate(session: { user?: { id: string } } | null) {
+      const segs = segmentsRef.current;
+      const publicRoute = ["login", "auth", "reset-password", "account-deletion"].includes(String(segs[0] ?? ""));
       if (!session && !publicRoute) {
         router.replace("/login");
-      } else if (session && segments[0] === "login") {
+      } else if (session && segs[0] === "login") {
         router.replace("/");
       }
-      if (session?.user) {
-        setSentryUser(null);
-      } else {
-        setSentryUser(null);
+      setSentryUser(session?.user ? { id: session.user.id } : null);
+    }
+
+    (async () => {
+      let session = null;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          // Stale/invalid refresh token — wipe local session and treat as signed out.
+          await supabase.auth.signOut({ scope: "local" });
+        } else {
+          session = data.session;
+        }
+      } catch {
+        await supabase.auth.signOut({ scope: "local" });
       }
+      if (!mounted) return;
+      evaluate(session);
+      onReady();
+    })();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      evaluate(session);
     });
-    return () => subscription.unsubscribe();
-  }, [segments, router]);
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   return null;
 }
@@ -55,8 +88,23 @@ function ConfigurationError() {
 
 function RootLayoutContent() {
   const { colorScheme } = useTheme();
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const supabaseConfigured = isSupabaseConfigured();
 
-  if (!isSupabaseConfigured()) {
+  useEffect(() => {
+    if (!supabaseConfigured) {
+      SplashScreen.hideAsync().catch(() => {});
+      return;
+    }
+    if (isAuthReady) {
+      // Defer one frame so router.replace lands before the splash drops.
+      requestAnimationFrame(() => {
+        SplashScreen.hideAsync().catch(() => {});
+      });
+    }
+  }, [supabaseConfigured, isAuthReady]);
+
+  if (!supabaseConfigured) {
     return (
       <>
         <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
@@ -81,7 +129,7 @@ function RootLayoutContent() {
   return (
     <>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-      <AuthGuard />
+      <AuthGuard onReady={() => setIsAuthReady(true)} />
       <NotificationScheduler />
       {Platform.OS === "web" ? <WebFrame>{stack}</WebFrame> : stack}
     </>

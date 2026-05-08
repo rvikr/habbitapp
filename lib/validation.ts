@@ -14,3 +14,11 @@ export function parseOptionalPositiveNumber(value: string): { ok: true; value: n
   }
   return { ok: true, value: parsed };
 }
+
+export function validateFeedback(input: { rating: number; message: string }): string | null {
+  const message = input.message.trim();
+  if (message.length < 10) return "Please add at least 10 characters so we can understand the feedback.";
+  if (message.length > 2000) return "Please keep feedback under 2000 characters.";
+  if (!Number.isInteger(input.rating) || input.rating < 1 || input.rating > 5) return "Choose a rating from 1 to 5.";
+  return null;
+}

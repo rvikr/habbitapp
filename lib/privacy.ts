@@ -5,10 +5,11 @@ export async function exportMyData(): Promise<{ ok: boolean; data?: string; erro
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "You need to sign in again." };
 
-  const [{ data: profile }, { data: habits }, { data: completions }] = await Promise.all([
+  const [{ data: profile }, { data: habits }, { data: completions }, { data: feedback }] = await Promise.all([
     supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
     supabase.from("habits").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
     supabase.from("habit_completions").select("*").eq("user_id", user.id).order("completed_on", { ascending: false }),
+    supabase.from("feedback_reports").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
   ]);
 
   return {
@@ -20,6 +21,7 @@ export async function exportMyData(): Promise<{ ok: boolean; data?: string; erro
         profile: profile ?? null,
         habits: habits ?? [],
         completions: completions ?? [],
+        feedback: feedback ?? [],
       },
       null,
       2,

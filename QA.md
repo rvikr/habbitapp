@@ -73,6 +73,7 @@ Mark each item: ✅ pass · ❌ fail · ⏭️ skip · `<note>`
 | 4.11 | Privacy & Data: analytics opt-out persists after restart | | | |
 | 4.12 | Privacy & Data: data export opens and contains current user's habits/logs | | | |
 | 4.13 | Privacy & Data: account deletion request records successfully | | | |
+| 4.14 | Feedback: submit bug/idea/usability report and verify it appears in Supabase | | | |
 
 ---
 

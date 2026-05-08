@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 
 import { localDateDaysAgo, localDateKey } from "../lib/date.ts";
 import { validatePassword } from "../lib/password.ts";
-import { isValidReminderTime, parseOptionalPositiveNumber } from "../lib/validation.ts";
+import { isValidReminderTime, parseOptionalPositiveNumber, validateFeedback } from "../lib/validation.ts";
 
 function test(name, fn) {
   try {
@@ -40,4 +40,10 @@ test("positive number parsing rejects invalid habit targets", () => {
   assert.deepEqual(parseOptionalPositiveNumber("2.5"), { ok: true, value: 2.5 });
   assert.equal(parseOptionalPositiveNumber("0").ok, false);
   assert.equal(parseOptionalPositiveNumber("-1").ok, false);
+});
+
+test("feedback validation requires useful message and valid rating", () => {
+  assert.equal(validateFeedback({ rating: 5, message: "Great, but reminders need snooze." }), null);
+  assert.equal(validateFeedback({ rating: 5, message: "too short" })?.includes("10 characters"), true);
+  assert.equal(validateFeedback({ rating: 6, message: "This message is long enough." })?.includes("rating"), true);
 });
