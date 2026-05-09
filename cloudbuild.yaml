@@ -25,7 +25,7 @@ steps:
       - deploy
       - lagan
       - '--image=gcr.io/lagan-495719/lagan'
-      - '--region=us-central1'
+      - '--region=asia-south2'
       - '--platform=managed'
       - '--allow-unauthenticated'
       - '--port=8080'
