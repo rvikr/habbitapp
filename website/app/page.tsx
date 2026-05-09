@@ -1,11 +1,35 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { createClient } from "@supabase/supabase-js";
+
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Lagan लगन — Cultivate Your Dedication",
   description:
     "A minimalist habit tracker for focused individuals. Build routines, track progress, and celebrate small wins with Quiet Energy.",
 };
+
+// ─── Stats helpers ───────────────────────────────────────────
+type PublicStats = { user_count: number; completions_count: number; habits_count: number };
+
+async function getPublicStats(): Promise<PublicStats> {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data } = await supabase.rpc("get_public_stats");
+    if (data) return data as PublicStats;
+  } catch {}
+  return { user_count: 0, completions_count: 0, habits_count: 0 };
+}
+
+function formatStat(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M+`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, "")}k+`;
+  return n.toLocaleString();
+}
 
 // ─── Reusable Icon ───────────────────────────────────────────
 function Icon({
@@ -29,7 +53,8 @@ function Icon({
   );
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const stats = await getPublicStats();
   return (
     <div className="min-h-screen overflow-x-hidden">
       {/* ── Navbar ─────────────────────────────────────────── */}
@@ -143,7 +168,9 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <p className="text-sm text-on-surface-variant">
-                  <span className="font-bold text-on-background">Joined by 10k+</span>{" "}
+                  <span className="font-bold text-on-background">
+                    Joined by {formatStat(stats.user_count) || "our first"}
+                  </span>{" "}
                   focused individuals
                 </p>
               </div>
@@ -333,7 +360,11 @@ export default function LandingPage() {
         <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
         <div className="max-w-7xl mx-auto px-6 lg:px-16 relative z-10">
           <div className="grid grid-cols-3 gap-8 text-center">
-            {[["10k+", "Focused individuals"], ["500k+", "Habits completed"], ["4.9★", "App store rating"]].map(([val, label]) => (
+            {([
+              [formatStat(stats.user_count), "Focused individuals"],
+              [formatStat(stats.completions_count), "Habits completed"],
+              [formatStat(stats.habits_count), "Habits tracked"],
+            ] as [string, string][]).map(([val, label]) => (
               <div key={label} className="space-y-2">
                 <p className="font-extrabold text-white" style={{ fontSize: "clamp(36px,5vw,52px)", letterSpacing: "-0.03em" }}>{val}</p>
                 <p className="text-white/75 font-medium">{label}</p>
