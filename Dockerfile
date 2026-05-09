@@ -1,0 +1,35 @@
+# Stage 1: build web output
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+ARG EXPO_PUBLIC_SUPABASE_URL
+ARG EXPO_PUBLIC_SUPABASE_ANON_KEY
+ARG EXPO_PUBLIC_SENTRY_DSN
+ARG EXPO_PUBLIC_POSTHOG_KEY
+ARG EXPO_PUBLIC_POSTHOG_HOST
+ARG EXPO_PUBLIC_PRIVACY_POLICY_URL
+
+ENV EXPO_PUBLIC_SUPABASE_URL=$EXPO_PUBLIC_SUPABASE_URL \
+    EXPO_PUBLIC_SUPABASE_ANON_KEY=$EXPO_PUBLIC_SUPABASE_ANON_KEY \
+    EXPO_PUBLIC_SENTRY_DSN=$EXPO_PUBLIC_SENTRY_DSN \
+    EXPO_PUBLIC_POSTHOG_KEY=$EXPO_PUBLIC_POSTHOG_KEY \
+    EXPO_PUBLIC_POSTHOG_HOST=$EXPO_PUBLIC_POSTHOG_HOST \
+    EXPO_PUBLIC_PRIVACY_POLICY_URL=$EXPO_PUBLIC_PRIVACY_POLICY_URL
+
+RUN npx expo export --platform web
+
+# Stage 2: serve with nginx
+FROM nginx:alpine
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
