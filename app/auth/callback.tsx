@@ -3,11 +3,15 @@ import { ActivityIndicator, Text, View } from "react-native";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase/client";
 import { parseAuthCallbackUrl } from "@/lib/auth-redirect";
 
+type Status = "loading" | "success" | "error";
+
 export default function AuthCallbackScreen() {
   const router = useRouter();
+  const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,11 +38,23 @@ export default function AuthCallbackScreen() {
       }
 
       if (cancelled) return;
-      router.replace((parsed.type === "recovery" ? "/reset-password" : "/") as never);
+
+      if (parsed.type === "recovery") {
+        router.replace("/reset-password" as never);
+        return;
+      }
+
+      setStatus("success");
+      setTimeout(() => {
+        if (!cancelled) router.replace("/" as never);
+      }, 2000);
     }
 
     finishAuth().catch((e) => {
-      if (!cancelled) setError(e instanceof Error ? e.message : "Could not complete authentication.");
+      if (!cancelled) {
+        setError(e instanceof Error ? e.message : "Could not complete authentication.");
+        setStatus("error");
+      }
     });
 
     return () => {
@@ -48,13 +64,25 @@ export default function AuthCallbackScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background dark:bg-d-background items-center justify-center px-margin-mobile">
-      {error ? (
+      {status === "error" ? (
         <>
           <Text className="text-headline-md text-on-background dark:text-d-on-background font-bold text-center mb-sm">
             Link could not be opened
           </Text>
           <Text className="text-body-md text-on-surface-variant dark:text-d-on-surface-variant text-center">
             {error}
+          </Text>
+        </>
+      ) : status === "success" ? (
+        <>
+          <View className="w-20 h-20 rounded-full bg-primary items-center justify-center mb-lg">
+            <Ionicons name="checkmark" size={40} color="#ffffff" />
+          </View>
+          <Text className="text-headline-md text-on-background dark:text-d-on-background font-bold text-center mb-sm">
+            Email confirmed!
+          </Text>
+          <Text className="text-body-md text-on-surface-variant dark:text-d-on-surface-variant text-center">
+            Welcome to Lagan. Taking you in…
           </Text>
         </>
       ) : (
