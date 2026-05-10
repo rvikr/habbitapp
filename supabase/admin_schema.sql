@@ -1,0 +1,97 @@
+-- =====================================================
+-- Lagan Admin Panel — Database Schema
+-- Run this in: Supabase Dashboard → SQL Editor → Run
+-- =====================================================
+
+-- Feature flags (runtime toggles without code deploys)
+create table if not exists public.feature_flags (
+  key         text primary key,
+  name        text not null,
+  description text,
+  enabled     boolean not null default false,
+  updated_at  timestamptz not null default now()
+);
+
+-- Suggested habits shown in the habit catalog
+create table if not exists public.suggested_habits (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  description text,
+  icon        text not null default 'star',
+  enabled     boolean not null default true,
+  sort_order  int  not null default 0,
+  created_at  timestamptz not null default now()
+);
+
+-- Immutable log of every admin action (WORM — write once read many)
+create table if not exists public.admin_audit_log (
+  id            uuid primary key default gen_random_uuid(),
+  admin_email   text not null,
+  action        text not null,
+  resource_type text,
+  resource_id   text,
+  details       jsonb,
+  created_at    timestamptz not null default now()
+);
+
+-- Global notification banners (read by mobile/web clients)
+create table if not exists public.global_notifications (
+  id         uuid primary key default gen_random_uuid(),
+  title      text not null,
+  body       text not null,
+  type       text not null default 'info',   -- info | warning | success
+  active     boolean not null default true,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz
+);
+
+-- Add is_pro column to profiles if it doesn't exist
+alter table public.profiles add column if not exists is_pro boolean not null default false;
+alter table public.profiles add column if not exists platform text;  -- 'ios' | 'android' | 'web'
+
+-- ── Row Level Security ────────────────────────────────────────────────────────
+
+alter table public.feature_flags         enable row level security;
+alter table public.suggested_habits      enable row level security;
+alter table public.admin_audit_log       enable row level security;
+alter table public.global_notifications  enable row level security;
+
+-- Authenticated users can read these (app uses them to gate features)
+drop policy if exists "auth read feature_flags"        on public.feature_flags;
+drop policy if exists "auth read suggested_habits"     on public.suggested_habits;
+drop policy if exists "auth read global_notifications" on public.global_notifications;
+
+create policy "auth read feature_flags"
+  on public.feature_flags for select to authenticated using (true);
+
+create policy "auth read suggested_habits"
+  on public.suggested_habits for select to authenticated using (true);
+
+create policy "auth read global_notifications"
+  on public.global_notifications for select to authenticated using (active = true);
+
+-- All writes go through service role key (no public write policies)
+
+-- ── Seed Data ─────────────────────────────────────────────────────────────────
+
+insert into public.feature_flags (key, name, description, enabled) values
+  ('maintenance_mode',    'Maintenance Mode',      'Show a "Coming Back Soon" screen to all users during downtime',    false),
+  ('leaderboard',         'Leaderboard',           'Enable the public competitive leaderboard',                        true),
+  ('achievements',        'Achievements & Badges', 'Enable the XP, level, and badge system',                          true),
+  ('social_feed',         'Social Feed',           'Enable public activity sharing and community feeds',               false),
+  ('ai_suggestions',      'AI Habit Suggestions',  'Enable AI-powered personalised habit suggestions',                 false),
+  ('push_notifications',  'Push Notifications',    'Enable sending push notifications to mobile devices',              true)
+on conflict (key) do nothing;
+
+insert into public.suggested_habits (name, description, icon, sort_order) values
+  ('Drink Water',   'Stay hydrated — drink 8 glasses daily',                 'water_drop',      1),
+  ('Morning Walk',  'Start your day with a refreshing walk outside',          'directions_walk', 2),
+  ('Read',          'Read for at least 20 minutes every day',                 'menu_book',       3),
+  ('Meditate',      'Practice mindfulness — even 5 minutes counts',           'self_improvement',4),
+  ('Exercise',      'Get your daily workout in',                              'fitness_center',  5),
+  ('Sleep Early',   'Get to bed by 10 pm for better rest',                   'bedtime',         6),
+  ('Journal',       'Reflect on your day in writing',                        'edit_note',       7),
+  ('No Sugar',      'Avoid sugary foods and drinks today',                   'nutrition',       8),
+  ('Cold Shower',   'Build resilience with a cold shower',                   'shower',          9),
+  ('Gratitude',     'Write down 3 things you are grateful for',              'favorite',        10)
+on conflict do nothing;

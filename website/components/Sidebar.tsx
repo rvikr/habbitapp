@@ -14,9 +14,11 @@ const NAV = [
 export default function Sidebar({
   displayName,
   email,
+  isAdmin = false,
 }: {
   displayName: string;
   email: string | null;
+  isAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -71,6 +73,22 @@ export default function Sidebar({
           );
         })}
       </nav>
+
+      {/* Admin link */}
+      {isAdmin && (
+        <div className="px-3 pt-2 pb-1">
+          <div className="h-px bg-outline-variant/20 mb-2" />
+          <Link
+            href="/admin"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl font-semibold text-sm text-on-surface-variant hover:text-primary hover:bg-primary/6 transition-all"
+          >
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              admin_panel_settings
+            </span>
+            Admin Panel
+          </Link>
+        </div>
+      )}
 
       {/* Profile + sign out */}
       <div className="p-4 border-t border-outline-variant/30 space-y-1">

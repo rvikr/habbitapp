@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Sidebar from "@/components/Sidebar";
 
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
 export default async function AppLayout({
   children,
 }: {
@@ -26,9 +31,11 @@ export default async function AppLayout({
     user.email?.split("@")[0] ??
     "there";
 
+  const isAdmin = ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? "");
+
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar displayName={displayName} email={user.email ?? null} />
+      <Sidebar displayName={displayName} email={user.email ?? null} isAdmin={isAdmin} />
       <main className="ml-60 flex-1 min-h-screen">{children}</main>
     </div>
   );
