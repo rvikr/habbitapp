@@ -1,6 +1,6 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal, Linking } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { signIn, signUp, resetPassword } from "@/lib/actions";
 import { validatePassword } from "@/lib/password";

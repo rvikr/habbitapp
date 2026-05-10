@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+﻿import { useState, useCallback } from "react";
 import { Alert, View, Text, ScrollView, TouchableOpacity, RefreshControl, Image, Modal, TextInput, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { getLeaderboard, getMyProfile, setDisplayName, getMyRank, type LeaderboardEntry, type Profile } from "@/lib/leaderboard";
 import { avatarUrl, type AvatarStyle } from "@/lib/avatar";
 import ShareCardModal, { type ShareCardData } from "@/components/share-card-modal";

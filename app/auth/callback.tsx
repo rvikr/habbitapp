@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { supabase } from "@/lib/supabase/client";
 import { parseAuthCallbackUrl } from "@/lib/auth-redirect";
 

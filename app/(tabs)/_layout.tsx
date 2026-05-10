@@ -1,6 +1,6 @@
-import { Tabs } from "expo-router";
+﻿import { Tabs } from "expo-router";
 import { useColorScheme, Platform } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 const TAB_ACTIVE = "#451ebb";
 const TAB_ACTIVE_DARK = "#cabeff";

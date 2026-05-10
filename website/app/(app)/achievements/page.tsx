@@ -3,6 +3,9 @@ import { getStats } from "@/lib/habits";
 import { computeBadges } from "@/lib/badges";
 import ShareButton from "@/components/share-button";
 import { getBadgeShareMessage } from "@/lib/share-messages";
+import { addDateKeyDays, dateKeyInTimeZone } from "@/lib/date";
+import { getRequestTimeZone } from "@/lib/request-timezone";
+import { XP_PER_LEVEL, levelForXp, xpForCompletions, xpInLevel } from "@/lib/xp";
 import type { Badge } from "@/types/db";
 
 const APP_URL = "https://lagan.health";
@@ -77,26 +80,21 @@ export default async function AchievementsPage() {
   const earned = badges.filter((b) => b.earned);
   const locked = badges.filter((b) => !b.earned);
 
-  // XP & level (simple: 100 XP per habit completion)
-  const xpPerCompletion = 100;
-  const totalXP = (stats?.totalCompletions ?? 0) * xpPerCompletion;
-  const xpPerLevel = 3000;
-  const level = Math.floor(totalXP / xpPerLevel) + 1;
-  const levelXP = totalXP % xpPerLevel;
-  const levelPct = Math.round((levelXP / xpPerLevel) * 100);
+  const totalXP = xpForCompletions(stats?.totalCompletions ?? 0);
+  const level = levelForXp(totalXP);
+  const levelXP = xpInLevel(totalXP);
+  const levelPct = Math.round((levelXP / XP_PER_LEVEL) * 100);
 
   // Build last-30-days activity
-  const today = new Date();
+  const timeZone = await getRequestTimeZone();
+  const todayStr = dateKeyInTimeZone(new Date(), timeZone);
   const thirtyDays = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - 29 + i);
-    return d.toISOString().split("T")[0];
+    return addDateKeyDays(todayStr, -29 + i);
   });
   const activeDatesSet = new Set(stats?.activeDates ?? []);
-  const todayStr = today.toISOString().split("T")[0];
 
   return (
-    <div className="p-8 space-y-8 max-w-5xl">
+    <div className="max-w-5xl space-y-8 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div>
         <h1 className="font-extrabold text-on-background" style={{ fontSize: "28px", letterSpacing: "-0.01em" }}>
@@ -108,7 +106,7 @@ export default async function AchievementsPage() {
       </div>
 
       {/* Level hero */}
-      <div className="bg-gradient-to-br from-primary to-primary-container rounded-3xl p-8 text-white relative overflow-hidden shadow-[0_8px_40px_rgba(93,63,211,0.3)]">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-container p-5 text-white shadow-[0_8px_40px_rgba(93,63,211,0.3)] sm:p-8">
         <div className="absolute -right-8 -top-8 opacity-15 pointer-events-none">
           <span className="material-symbols-outlined text-[200px]" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
         </div>
@@ -128,25 +126,25 @@ export default async function AchievementsPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/70 font-medium">XP Progress</span>
-                <span className="text-white font-bold">{levelXP.toLocaleString()} / {xpPerLevel.toLocaleString()} XP</span>
+                <span className="text-white font-bold">{levelXP.toLocaleString()} / {XP_PER_LEVEL.toLocaleString()} XP</span>
               </div>
-              <div className="w-72 h-3 bg-white/20 rounded-full overflow-hidden">
+              <div className="h-3 w-full max-w-72 overflow-hidden rounded-full bg-white/20">
                 <div
                   className="h-full bg-white rounded-full transition-all duration-700"
                   style={{ width: `${levelPct}%` }}
                 />
               </div>
-              <p className="text-white/60 text-xs">{(xpPerLevel - levelXP).toLocaleString()} XP to Level {level + 1}</p>
+              <p className="text-white/60 text-xs">{(XP_PER_LEVEL - levelXP).toLocaleString()} XP to Level {level + 1}</p>
             </div>
           </div>
 
-          <div className="flex gap-5">
+          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3 lg:w-auto lg:gap-5">
             {[
               { icon: "local_fire_department", val: stats?.streak ?? 0,              lbl: "Day Streak",    color: "text-tertiary-fixed"      },
               { icon: "military_tech",          val: earned.length,                   lbl: "Badges Earned", color: "text-secondary-container"  },
               { icon: "check_circle",           val: stats?.totalCompletions ?? 0,    lbl: "Habits Done",   color: "text-secondary-fixed"      },
             ].map(({ icon, val, lbl, color }) => (
-              <div key={lbl} className="bg-white/15 backdrop-blur-sm rounded-2xl px-6 py-5 text-center border border-white/15">
+              <div key={lbl} className="rounded-2xl border border-white/15 bg-white/15 px-4 py-4 text-center backdrop-blur-sm sm:px-6 sm:py-5">
                 <span className={`material-symbols-outlined ${color} text-3xl`} style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
                 <p className="font-extrabold text-white text-3xl mt-2" style={{ letterSpacing: "-0.02em" }}>{val}</p>
                 <p className="text-white/65 text-sm mt-0.5">{lbl}</p>

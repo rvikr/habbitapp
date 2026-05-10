@@ -1,4 +1,10 @@
-import { supabase, isSupabaseConfigured, configurationError } from "./supabase/client";
+import {
+  supabase,
+  isSupabaseConfigured,
+  configurationError,
+  clearLocalAuthSession,
+  getCurrentUser,
+} from "./supabase/client";
 import type { AvatarStyle } from "./avatar";
 import { track, resetAnalytics } from "./analytics";
 import { authCallbackUrl } from "./auth-redirect";
@@ -8,9 +14,7 @@ import { cancelHabitReminders, syncScheduledReminders } from "./reminder-sync";
 type ActionResult = { ok: boolean; error?: string };
 
 async function getUser() {
-  if (!isSupabaseConfigured()) return null;
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  return getCurrentUser();
 }
 
 function notSignedIn(): ActionResult {
@@ -62,7 +66,14 @@ export async function resetPassword(email: string) {
 }
 
 export async function signOut() {
-  if (isSupabaseConfigured()) await supabase.auth.signOut();
+  if (isSupabaseConfigured()) {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) await clearLocalAuthSession();
+    } catch {
+      await clearLocalAuthSession();
+    }
+  }
   resetAnalytics();
 }
 
@@ -232,7 +243,7 @@ export async function requestAccountDeletion(reason?: string): Promise<ActionRes
     );
     if (error) return { ok: false, error: error.message };
     if (!data?.ok) return { ok: false, error: data?.error ?? "Could not delete account." };
-    await supabase.auth.signOut({ scope: "local" });
+    await clearLocalAuthSession();
     resetAnalytics();
     return { ok: true };
   } catch {

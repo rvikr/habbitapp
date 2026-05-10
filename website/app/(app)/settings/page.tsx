@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/auth";
 import { getStats } from "@/lib/habits";
+import { levelForXp, xpForCompletions } from "@/lib/xp";
 import SettingsForm from "./SettingsForm";
 
 export const metadata: Metadata = { title: "Settings — Lagan" };
@@ -8,9 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
   if (!user) return null;
 
@@ -29,11 +29,11 @@ export default async function SettingsPage() {
     user.email?.split("@")[0] ??
     "";
 
-  const totalXP = (stats?.totalCompletions ?? 0) * 100;
-  const level = Math.floor(totalXP / 3000) + 1;
+  const totalXP = xpForCompletions(stats?.totalCompletions ?? 0);
+  const level = levelForXp(totalXP);
 
   return (
-    <div className="p-8 space-y-8 max-w-2xl">
+    <div className="max-w-2xl space-y-8 p-4 sm:p-6 lg:p-8">
 
       {/* ── Header ──────────────────────────────────────────── */}
       <div className="flex items-start justify-between">

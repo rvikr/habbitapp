@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+﻿import { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { getBadgeShareMessage, getRankShareMessage } from "@/lib/share-messages";

@@ -1,6 +1,6 @@
 {
-  "name": "HabbitApp",
-  "short_name": "HabbitApp",
+  "name": "Lagan लगन",
+  "short_name": "Lagan",
   "description": "Build habits, track progress, earn badges.",
   "start_url": "/",
   "display": "standalone",

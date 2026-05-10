@@ -1,5 +1,5 @@
 -- Leaderboard function — run this once in Supabase Dashboard → SQL Editor
--- Returns top 50 users ranked by XP (100 XP per habit completion)
+-- Returns top 50 users ranked by XP (10 XP per habit completion)
 -- Supports period: 'week' | 'month' | 'all'
 
 create or replace function get_leaderboard(period text default 'all')
@@ -29,7 +29,7 @@ begin
   with user_xp as (
     select
       hc.user_id,
-      count(*)::bigint * 100 as xp
+      count(*)::bigint * 10 as xp
     from habit_completions hc
     where hc.completed_on >= v_start_date
     group by hc.user_id

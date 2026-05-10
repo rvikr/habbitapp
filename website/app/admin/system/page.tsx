@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { FlagToggle } from "./FlagToggle";
 import { NotificationForm } from "./NotificationForm";
@@ -53,7 +53,7 @@ export default async function SystemPage() {
   const otherFlags = flags.filter((f) => f.key !== "maintenance_mode");
 
   return (
-    <div className="p-8 space-y-8 max-w-4xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-4xl">
       <div>
         <h1 className="font-extrabold text-slate-900 text-2xl" style={{ letterSpacing: "-0.01em" }}>
           System Control

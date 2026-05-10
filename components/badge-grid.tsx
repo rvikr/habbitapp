@@ -1,5 +1,5 @@
-import { View, Text, FlatList, TouchableOpacity } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+﻿import { View, Text, FlatList, TouchableOpacity } from "react-native";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useTheme } from "@/components/theme-provider";
 import Icon from "./icon";
 import type { ComputedBadge } from "@/lib/badges";

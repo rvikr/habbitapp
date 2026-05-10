@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/auth";
 import { getStats } from "@/lib/habits";
 import ShareButton from "@/components/share-button";
 import { getRankShareMessage } from "@/lib/share-messages";
+import { XP_PER_LEVEL, levelForXp, xpForCompletions, xpInLevel } from "@/lib/xp";
 import { redirect } from "next/navigation";
 
 const APP_URL = "https://lagan.health";
@@ -43,9 +45,6 @@ async function getLeaderboard(
   }
   return { entries: Array.isArray(data) ? (data as LeaderboardEntry[]) : [] };
 }
-
-const XP_PER_COMPLETION = 100;
-const XP_PER_LEVEL = 3000;
 
 const TABS: { label: string; period: Period }[] = [
   { label: "This Week", period: "week" },
@@ -91,7 +90,7 @@ export default async function LeaderboardPage({
     raw === "week" ? "week" : raw === "month" ? "month" : "all";
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
   if (!user) redirect("/login");
 
   const [stats, { entries: rawEntries, debugError }, { data: profile }] = await Promise.all([
@@ -104,10 +103,10 @@ export default async function LeaderboardPage({
   const board = rawEntries.filter((e) => e.display_name);
   const hasDisplayName = !!(profile?.display_name);
 
-  const userXP = (stats?.totalCompletions ?? 0) * XP_PER_COMPLETION;
+  const userXP = xpForCompletions(stats?.totalCompletions ?? 0);
   const userStreak = stats?.streak ?? 0;
-  const userLevel = Math.floor(userXP / XP_PER_LEVEL) + 1;
-  const levelXP = userXP % XP_PER_LEVEL;
+  const userLevel = levelForXp(userXP);
+  const levelXP = xpInLevel(userXP);
   const levelPct = Math.round((levelXP / XP_PER_LEVEL) * 100);
 
   const userEntry = board.find((e) => e.is_current_user);
@@ -120,8 +119,6 @@ export default async function LeaderboardPage({
       : null;
 
   const top3 = board.slice(0, 3);
-  const rest = board.slice(3);
-
   const rankMsg = userRank
     ? getRankShareMessage({ rank: userRank, streak: userStreak, topPct })
     : null;
@@ -141,7 +138,7 @@ export default async function LeaderboardPage({
   ];
 
   return (
-    <div className="flex gap-8 p-8 min-h-screen">
+    <div className="flex min-h-screen flex-col gap-6 p-4 sm:p-6 lg:p-8 xl:flex-row xl:gap-8">
 
       {/* ── Main leaderboard column ──────────────────────────── */}
       <div className="flex-1 min-w-0 space-y-6">
@@ -160,7 +157,7 @@ export default async function LeaderboardPage({
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-surface-container rounded-2xl p-1 gap-1 w-fit">
+        <div className="flex w-full gap-1 overflow-x-auto rounded-2xl bg-surface-container p-1 sm:w-fit">
           {TABS.map(({ label, period: p }) => (
             <Link
               key={p}
@@ -207,7 +204,7 @@ export default async function LeaderboardPage({
 
             {/* Podium — top 3 */}
             {top3.length >= 2 && (
-              <div className="bg-white rounded-3xl p-8 shadow-card border border-outline-variant/15">
+              <div className="bg-white rounded-3xl p-5 shadow-card border border-outline-variant/15 sm:p-8">
                 <div className="flex items-end justify-center gap-4">
                   {podiumOrder.map((entry, podiumIdx) => {
                     if (!entry) return <div key={podiumIdx} className="flex-1" />;
@@ -266,9 +263,9 @@ export default async function LeaderboardPage({
             )}
 
             {/* Full table */}
-            <div className="bg-white rounded-3xl shadow-card border border-outline-variant/15 overflow-hidden">
-              {/* Column headers */}
-              <div className="grid grid-cols-[48px_1fr_80px_100px] gap-3 px-6 py-3 bg-surface-container/50 border-b border-outline-variant/15">
+              <div className="overflow-x-auto rounded-3xl bg-white shadow-card border border-outline-variant/15">
+                {/* Column headers */}
+              <div className="grid min-w-[560px] grid-cols-[48px_1fr_80px_100px] gap-3 px-6 py-3 bg-surface-container/50 border-b border-outline-variant/15">
                 <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider text-center">#</span>
                 <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Player</span>
                 <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider text-center">Streak</span>
@@ -283,7 +280,7 @@ export default async function LeaderboardPage({
                 return (
                   <div
                     key={entry.user_id}
-                    className={`grid grid-cols-[48px_1fr_80px_100px] gap-3 items-center px-6 py-3.5 border-b border-outline-variant/10 last:border-0 transition-colors ${
+                    className={`grid min-w-[560px] grid-cols-[48px_1fr_80px_100px] gap-3 items-center px-6 py-3.5 border-b border-outline-variant/10 last:border-0 transition-colors ${
                       entry.is_current_user
                         ? "bg-primary/5"
                         : "hover:bg-surface-container/40"
@@ -326,7 +323,7 @@ export default async function LeaderboardPage({
                           )}
                         </p>
                         <p className="text-xs text-on-surface-variant">
-                          Level {Math.floor(entry.xp / XP_PER_LEVEL) + 1}
+                          Level {levelForXp(entry.xp)}
                         </p>
                       </div>
                     </div>
@@ -379,7 +376,7 @@ export default async function LeaderboardPage({
       </div>
 
       {/* ── Right stats sidebar ──────────────────────────────── */}
-      <aside className="w-72 flex-shrink-0 space-y-4 pt-[68px]">
+      <aside className="w-full flex-shrink-0 space-y-4 xl:w-72 xl:pt-[68px]">
 
         {/* Your rank card */}
         <div

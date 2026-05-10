@@ -1,5 +1,5 @@
-import { View, Text } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+﻿import { View, Text } from "react-native";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 type Props = {
   count: number;

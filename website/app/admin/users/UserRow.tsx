@@ -63,7 +63,7 @@ export function UserRow({ user }: { user: AdminUser }) {
 
   return (
     <div className="border-b border-slate-100 last:border-0">
-      <div className="grid items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors"
+      <div className="grid min-w-[920px] items-center gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors"
         style={{ gridTemplateColumns: "36px 1fr 120px 90px 80px 1fr auto" }}>
 
         {/* Avatar */}

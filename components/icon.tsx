@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+﻿import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 const ICON_MAP: Record<string, string> = {
   // Navigation
@@ -30,6 +30,7 @@ const ICON_MAP: Record<string, string> = {
   bedtime: "weather-night",
   medication: "pill",
   restaurant: "food",
+  nutrition: "food-apple",
   shower: "shower-head",
   do_not_disturb_on: "cancel",
   code: "code-tags",

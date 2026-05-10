@@ -1,7 +1,7 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { supabase, isSupabaseConfigured, getCurrentUser } from "@/lib/supabase/client";
 import { validateFeedback } from "@/lib/validation";
 
 export type FeedbackCategory = "bug" | "idea" | "usability" | "other";
@@ -18,7 +18,7 @@ export async function submitFeedback(input: FeedbackInput): Promise<{ ok: boolea
   if (validationError) return { ok: false, error: validationError };
   if (!isSupabaseConfigured()) return { ok: false, error: "Supabase is not configured." };
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "You need to sign in again." };
 
   const { error } = await supabase.from("feedback_reports").insert({

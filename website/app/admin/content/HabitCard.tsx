@@ -44,7 +44,7 @@ export function HabitCard({ habit }: { habit: SuggestedHabit }) {
   }
 
   return (
-    <div className="flex items-center gap-4 px-5 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+    <div className="flex min-w-[680px] items-center gap-4 px-5 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
       {/* Sort */}
       <span className="text-xs font-bold text-slate-300 w-6 text-center flex-shrink-0">{habit.sort_order}</span>
 

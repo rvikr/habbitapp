@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/auth";
 import Sidebar from "@/components/Sidebar";
+import TimezoneCookie from "@/components/timezone-cookie";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -13,9 +15,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser(supabase);
 
   if (!user) redirect("/login");
 
@@ -34,9 +34,10 @@ export default async function AppLayout({
   const isAdmin = ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? "");
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:flex">
+      <TimezoneCookie />
       <Sidebar displayName={displayName} email={user.email ?? null} isAdmin={isAdmin} />
-      <main className="ml-60 flex-1 min-h-screen">{children}</main>
+      <main className="min-h-screen flex-1 pb-20 lg:ml-60 lg:pb-0">{children}</main>
     </div>
   );
 }

@@ -1,18 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin/audit";
-
-async function getAdminEmail() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.email ?? "unknown";
-}
+import { requireAdmin } from "@/lib/admin/auth";
 
 export async function createSuggestedHabit(formData: FormData) {
-  const adminEmail = await getAdminEmail();
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
   const name        = (formData.get("name") as string).trim();
   const description = (formData.get("description") as string | null)?.trim() ?? null;
   const icon        = (formData.get("icon") as string).trim() || "star";
@@ -24,14 +19,15 @@ export async function createSuggestedHabit(formData: FormData) {
     const admin = createAdminClient();
     const { error } = await admin.from("suggested_habits").insert({ name, description, icon, sort_order, enabled: true });
     if (error) return { ok: false, error: error.message };
-    await logAdminAction(adminEmail, "create_suggested_habit", "suggested_habit", undefined, { name });
+    await logAdminAction(auth.email, "create_suggested_habit", "suggested_habit", undefined, { name });
     revalidatePath("/admin/content");
     return { ok: true };
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
 export async function updateSuggestedHabit(id: string, formData: FormData) {
-  const adminEmail = await getAdminEmail();
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
   const name        = (formData.get("name") as string).trim();
   const description = (formData.get("description") as string | null)?.trim() ?? null;
   const icon        = (formData.get("icon") as string).trim() || "star";
@@ -43,31 +39,33 @@ export async function updateSuggestedHabit(id: string, formData: FormData) {
     const admin = createAdminClient();
     const { error } = await admin.from("suggested_habits").update({ name, description, icon, sort_order }).eq("id", id);
     if (error) return { ok: false, error: error.message };
-    await logAdminAction(adminEmail, "update_suggested_habit", "suggested_habit", id, { name });
+    await logAdminAction(auth.email, "update_suggested_habit", "suggested_habit", id, { name });
     revalidatePath("/admin/content");
     return { ok: true };
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
 export async function toggleSuggestedHabit(id: string, enabled: boolean) {
-  const adminEmail = await getAdminEmail();
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
   try {
     const admin = createAdminClient();
     const { error } = await admin.from("suggested_habits").update({ enabled }).eq("id", id);
     if (error) return { ok: false, error: error.message };
-    await logAdminAction(adminEmail, `${enabled ? "enable" : "disable"}_suggested_habit`, "suggested_habit", id);
+    await logAdminAction(auth.email, `${enabled ? "enable" : "disable"}_suggested_habit`, "suggested_habit", id);
     revalidatePath("/admin/content");
     return { ok: true };
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
 export async function deleteSuggestedHabit(id: string) {
-  const adminEmail = await getAdminEmail();
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
   try {
     const admin = createAdminClient();
     const { error } = await admin.from("suggested_habits").delete().eq("id", id);
     if (error) return { ok: false, error: error.message };
-    await logAdminAction(adminEmail, "delete_suggested_habit", "suggested_habit", id);
+    await logAdminAction(auth.email, "delete_suggested_habit", "suggested_habit", id);
     revalidatePath("/admin/content");
     return { ok: true };
   } catch (e) { return { ok: false, error: String(e) }; }

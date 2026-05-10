@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from "./supabase/client";
+import { supabase, isSupabaseConfigured, getCurrentUser } from "./supabase/client";
 
 export type LeaderboardEntry = {
   user_id: string;
@@ -34,7 +34,7 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
 // The current user's profile (display_name is null until they opt in).
 export async function getMyProfile(): Promise<Profile | null> {
   if (!isSupabaseConfigured()) return null;
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
   const { data } = await supabase
     .from("profiles")
@@ -46,7 +46,7 @@ export async function getMyProfile(): Promise<Profile | null> {
 
 // Opt in (or change name) by setting a display_name. Pass null to opt out.
 export async function setDisplayName(displayName: string | null): Promise<{ ok: boolean; error?: string }> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in" };
   // Use the user's avatar metadata so the leaderboard avatars match the in-app avatar.
   const avatarStyle = (user.user_metadata?.avatar_style as string | undefined) ?? "avataaars";
@@ -64,7 +64,7 @@ export async function setDisplayName(displayName: string | null): Promise<{ ok: 
 
 // Find current user's rank (1-indexed). Returns null if not opted in.
 export async function getMyRank(): Promise<number | null> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return null;
   const { data: me } = await supabase
     .from("leaderboard")

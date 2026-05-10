@@ -1,8 +1,8 @@
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { supabase, isSupabaseConfigured, getCurrentUser } from "@/lib/supabase/client";
 
 export async function exportMyData(): Promise<{ ok: boolean; data?: string; error?: string }> {
   if (!isSupabaseConfigured()) return { ok: false, error: "Supabase is not configured." };
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return { ok: false, error: "You need to sign in again." };
 
   const [{ data: profile }, { data: habits }, { data: completions }, { data: feedback }] = await Promise.all([

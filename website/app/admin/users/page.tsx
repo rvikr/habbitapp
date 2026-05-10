@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { UserRow, type AdminUser } from "./UserRow";
 
@@ -65,7 +65,7 @@ export default async function UsersPage({
   const { users, error } = await getUsers(q);
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl">
       {/* Header */}
       <div>
         <h1 className="font-extrabold text-slate-900 text-2xl" style={{ letterSpacing: "-0.01em" }}>
@@ -77,7 +77,7 @@ export default async function UsersPage({
       </div>
 
       {/* Search */}
-      <form className="flex gap-3">
+      <form className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1 max-w-md">
           <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
             search
@@ -116,10 +116,10 @@ export default async function UsersPage({
       )}
 
       {/* User table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm border border-slate-200">
         {/* Column headers */}
         <div
-          className="grid gap-3 px-5 py-3 bg-slate-50 border-b border-slate-200"
+          className="grid min-w-[920px] gap-3 px-5 py-3 bg-slate-50 border-b border-slate-200"
           style={{ gridTemplateColumns: "36px 1fr 120px 90px 80px 1fr auto" }}
         >
           {["", "User", "Joined", "Platform", "Status", "Pro", "Actions"].map((h) => (

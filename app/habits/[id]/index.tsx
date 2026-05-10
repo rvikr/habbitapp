@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+﻿import { useState, useCallback } from "react";
 import { Alert, View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { getHabit, weekProgressFor, streakFor } from "@/lib/habits";
 import { toggleHabit, deleteHabit, logCompletion } from "@/lib/actions";
 import { useCelebrate } from "@/components/celebration";

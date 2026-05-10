@@ -1,5 +1,5 @@
-import { ScrollView, View, Text } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+﻿import { ScrollView, View, Text } from "react-native";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import type { Insights } from "@/lib/habits";
 
 type InsightItem = {

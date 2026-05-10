@@ -1,6 +1,6 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Icon from "./icon";
 import type { Habit } from "@/types/db";
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -90,7 +90,7 @@ export default async function AdminPage() {
   const enabledFlags  = flags.filter((f) => f.enabled && f.key !== "maintenance_mode").length;
 
   return (
-    <div className="p-8 space-y-8 max-w-6xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-6xl">
       {/* Header */}
       <div>
         <h1 className="font-extrabold text-slate-900 text-2xl" style={{ letterSpacing: "-0.01em" }}>
@@ -134,14 +134,14 @@ export default async function AdminPage() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard icon="group"               label="Total Users"         value={totalUsers.toLocaleString()}       sub="registered accounts"  color="text-primary"   />
         <StatCard icon="checklist"           label="Habits Created"      value={totalHabits.toLocaleString()}      sub="across all users"     color="text-secondary" />
         <StatCard icon="task_alt"            label="Total Check-ins"     value={totalCompletions.toLocaleString()} sub="habit completions"    color="text-tertiary"  />
         <StatCard icon="person_check"        label="Active Today"        value={activeToday.toLocaleString()}      sub="completed ≥1 habit"   color="text-green-600" />
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* Quick actions */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-4">
           <h2 className="font-bold text-slate-900 text-sm">Quick Actions</h2>

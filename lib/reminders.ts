@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from "./supabase/client";
+import { supabase, isSupabaseConfigured, getCurrentUser } from "./supabase/client";
 import { localDateDaysAgo } from "./date";
 import { streakFromDates } from "./streak";
 
@@ -17,7 +17,7 @@ export type ScheduledReminder = {
   context: ReminderContext;
 };
 
-// Returns the hour (0–23) the user most often logs this habit, or null if too few data points.
+// Returns the hour (0-23) the user most often logs this habit, or null if too few data points.
 function typicalHourFromTimestamps(timestamps: string[]): number | null {
   if (timestamps.length < 3) return null;
   const counts: Record<number, number> = {};
@@ -31,7 +31,7 @@ function typicalHourFromTimestamps(timestamps: string[]): number | null {
 
 export async function getReminderSchedule(): Promise<ScheduledReminder[]> {
   if (!isSupabaseConfigured()) return [];
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return [];
 
   const cutoff = localDateDaysAgo(60);

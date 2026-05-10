@@ -1,18 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin/audit";
-
-async function getAdminEmail() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.email ?? "unknown";
-}
+import { requireAdmin } from "@/lib/admin/auth";
 
 export async function toggleFeatureFlag(key: string, enabled: boolean) {
-  const adminEmail = await getAdminEmail();
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
   try {
     const admin = createAdminClient();
     const { error } = await admin
@@ -20,7 +15,7 @@ export async function toggleFeatureFlag(key: string, enabled: boolean) {
       .update({ enabled, updated_at: new Date().toISOString() })
       .eq("key", key);
     if (error) return { ok: false, error: error.message };
-    await logAdminAction(adminEmail, `toggle_flag_${enabled ? "on" : "off"}`, "feature_flag", key, { enabled });
+    await logAdminAction(auth.email, `toggle_flag_${enabled ? "on" : "off"}`, "feature_flag", key, { enabled });
     revalidatePath("/admin/system");
     revalidatePath("/admin");
     return { ok: true };
@@ -28,36 +23,39 @@ export async function toggleFeatureFlag(key: string, enabled: boolean) {
 }
 
 export async function createFeatureFlag(key: string, name: string, description: string) {
-  const adminEmail = await getAdminEmail();
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
   try {
     const admin = createAdminClient();
     const { error } = await admin.from("feature_flags").insert({ key, name, description, enabled: false });
     if (error) return { ok: false, error: error.message };
-    await logAdminAction(adminEmail, "create_feature_flag", "feature_flag", key, { name });
+    await logAdminAction(auth.email, "create_feature_flag", "feature_flag", key, { name });
     revalidatePath("/admin/system");
     return { ok: true };
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
 export async function sendGlobalNotification(title: string, body: string, type: string) {
-  const adminEmail = await getAdminEmail();
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
   try {
     const admin = createAdminClient();
     const { error } = await admin.from("global_notifications").insert({ title, body, type, active: true });
     if (error) return { ok: false, error: error.message };
-    await logAdminAction(adminEmail, "send_global_notification", "notification", undefined, { title, type });
+    await logAdminAction(auth.email, "send_global_notification", "notification", undefined, { title, type });
     revalidatePath("/admin/system");
     return { ok: true };
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
 export async function dismissNotification(id: string) {
-  const adminEmail = await getAdminEmail();
+  const auth = await requireAdmin();
+  if (!auth.ok) return { ok: false, error: auth.error };
   try {
     const admin = createAdminClient();
     const { error } = await admin.from("global_notifications").update({ active: false }).eq("id", id);
     if (error) return { ok: false, error: error.message };
-    await logAdminAction(adminEmail, "dismiss_notification", "notification", id);
+    await logAdminAction(auth.email, "dismiss_notification", "notification", id);
     revalidatePath("/admin/system");
     return { ok: true };
   } catch (e) { return { ok: false, error: String(e) }; }

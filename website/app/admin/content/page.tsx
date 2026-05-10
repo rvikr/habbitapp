@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { HabitCard, AddHabitForm } from "./HabitCard";
 
@@ -86,7 +86,7 @@ export default async function ContentPage({
   }
 
   return (
-    <div className="p-8 space-y-8 max-w-5xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl">
       <div>
         <h1 className="font-extrabold text-slate-900 text-2xl" style={{ letterSpacing: "-0.01em" }}>
           Content & Moderation
@@ -98,7 +98,7 @@ export default async function ContentPage({
 
       {/* ── Suggested Habits ───────────────────────────────── */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-bold text-slate-900">Habit Templates</h2>
             <p className="text-xs text-slate-400 mt-0.5">
@@ -111,9 +111,9 @@ export default async function ContentPage({
         {habitError ? (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-600 font-mono">{habitError}</div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto rounded-2xl bg-white shadow-sm border border-slate-200">
             {/* Header row */}
-            <div className="grid gap-3 px-5 py-3 bg-slate-50 border-b border-slate-200" style={{ gridTemplateColumns: "24px 36px 1fr 80px 80px auto" }}>
+            <div className="grid min-w-[680px] gap-3 px-5 py-3 bg-slate-50 border-b border-slate-200" style={{ gridTemplateColumns: "24px 36px 1fr 80px 80px auto" }}>
               {["#", "", "Template", "Status", "", "Actions"].map((h, i) => (
                 <span key={i} className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">{h}</span>
               ))}
@@ -139,7 +139,7 @@ export default async function ContentPage({
           </p>
         </div>
 
-        <form className="flex gap-3">
+        <form className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1 max-w-md">
             <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
               person_search
@@ -161,7 +161,7 @@ export default async function ContentPage({
         </form>
 
         {userQuery && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
               <p className="font-semibold text-sm text-slate-800">

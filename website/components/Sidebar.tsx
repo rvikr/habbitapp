@@ -33,7 +33,51 @@ export default function Sidebar({
   const initial = displayName?.[0]?.toUpperCase() ?? "?";
 
   return (
-    <aside className="w-60 min-h-screen bg-white/90 backdrop-blur-xl border-r border-outline-variant/30 flex flex-col fixed top-0 left-0 shadow-sidebar">
+    <>
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-outline-variant/30 bg-white/95 px-4 backdrop-blur-xl lg:hidden">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+            <span className="material-symbols-outlined text-[18px] text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
+              auto_awesome
+            </span>
+          </div>
+          <span className="font-extrabold text-on-background">
+            Lagan <span className="text-primary">लगन</span>
+          </span>
+        </Link>
+        <button
+          onClick={signOut}
+          className="flex h-9 w-9 items-center justify-center rounded-full text-on-surface-variant"
+          aria-label="Sign out"
+        >
+          <span className="material-symbols-outlined text-[20px]">logout</span>
+        </button>
+      </header>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-outline-variant/30 bg-white/95 px-2 py-1.5 backdrop-blur-xl lg:hidden">
+        {NAV.map(({ href, icon, label }) => {
+          const active = pathname === href || pathname.startsWith(href + "/");
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex min-w-0 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-bold ${
+                active ? "bg-primary/10 text-primary" : "text-on-surface-variant"
+              }`}
+            >
+              <span
+                className="material-symbols-outlined text-[20px]"
+                style={active ? { fontVariationSettings: "'FILL' 1" } : undefined}
+              >
+                {icon}
+              </span>
+              <span className="max-w-full truncate">{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <aside className="fixed left-0 top-0 hidden min-h-screen w-60 flex-col border-r border-outline-variant/30 bg-white/90 shadow-sidebar backdrop-blur-xl lg:flex">
       {/* Logo */}
       <div className="px-6 pt-6 pb-4">
         <Link href="/" className="flex items-center gap-2.5">
@@ -109,6 +153,7 @@ export default function Sidebar({
           Sign out
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

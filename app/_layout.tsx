@@ -3,14 +3,17 @@ import { useEffect, useRef, useState } from "react";
 import { Platform, Text, View } from "react-native";
 import { Stack, usePathname, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useFonts, PlusJakartaSans_400Regular, PlusJakartaSans_600SemiBold, PlusJakartaSans_700Bold } from "@expo-google-fonts/plus-jakarta-sans";
+import { useFonts } from "expo-font";
+import PlusJakartaSans_400Regular from "@expo-google-fonts/plus-jakarta-sans/PlusJakartaSans_400Regular.ttf";
+import PlusJakartaSans_600SemiBold from "@expo-google-fonts/plus-jakarta-sans/PlusJakartaSans_600SemiBold.ttf";
+import PlusJakartaSans_700Bold from "@expo-google-fonts/plus-jakarta-sans/PlusJakartaSans_700Bold.ttf";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { ThemeProvider, useTheme } from "@/components/theme-provider";
 import { CelebrationProvider } from "@/components/celebration";
 import ErrorBoundary from "@/components/error-boundary";
 import NotificationScheduler from "@/components/notification-scheduler";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase/client";
+import { supabase, isSupabaseConfigured, getCurrentSession } from "@/lib/supabase/client";
 import { initSentry, setUser as setSentryUser } from "@/lib/sentry";
 import { initAnalytics, track } from "@/lib/analytics";
 
@@ -47,18 +50,7 @@ function AuthGuard({ onReady }: { onReady: () => void }) {
     }
 
     (async () => {
-      let session = null;
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          // Stale/invalid refresh token — wipe local session and treat as signed out.
-          await supabase.auth.signOut({ scope: "local" });
-        } else {
-          session = data.session;
-        }
-      } catch {
-        await supabase.auth.signOut({ scope: "local" });
-      }
+      const session = await getCurrentSession();
       if (!mounted) return;
       evaluate(session);
       onReady();

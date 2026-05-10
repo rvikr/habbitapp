@@ -1,6 +1,6 @@
-import { View, Text, TouchableOpacity } from "react-native";
+﻿import { View, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 type Props = {
   title: string;

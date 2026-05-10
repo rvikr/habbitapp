@@ -1,5 +1,5 @@
-import { TouchableOpacity } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+﻿import { TouchableOpacity } from "react-native";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useTheme } from "./theme-provider";
 
 export default function ThemeToggle() {

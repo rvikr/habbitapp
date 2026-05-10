@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+﻿import { useState, useCallback } from "react";
 import { Alert, View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { getHabitsForToday, getInsights } from "@/lib/habits";
 import { toggleHabit } from "@/lib/actions";
 import InsightsStrip from "@/components/insights-strip";

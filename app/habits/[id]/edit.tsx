@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { Alert, View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { getHabit } from "@/lib/habits";
 import { updateHabitFull } from "@/lib/actions";
 import HabitForm from "@/components/habit-form";

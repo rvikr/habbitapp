@@ -16,7 +16,46 @@ export default function AdminSidebar({ email }: { email: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="w-60 min-h-screen bg-slate-900 flex flex-col fixed top-0 left-0 z-40">
+    <>
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between bg-slate-900 px-4 lg:hidden">
+        <Link href="/admin" className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary">
+            <span className="material-symbols-outlined text-[18px] text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
+              admin_panel_settings
+            </span>
+          </div>
+          <span className="font-extrabold text-sm text-white">Lagan Admin</span>
+        </Link>
+        <Link href="/dashboard" className="text-xs font-bold text-slate-300">
+          App
+        </Link>
+      </header>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-slate-800 bg-slate-900 px-1 py-1.5 lg:hidden">
+        {NAV.map(({ href, icon, label }) => {
+          const exact = href === "/admin";
+          const active = exact ? pathname === href : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex min-w-0 flex-col items-center gap-0.5 rounded-lg px-1 py-1 text-[10px] font-bold ${
+                active ? "bg-primary/20 text-primary" : "text-slate-400"
+              }`}
+            >
+              <span
+                className="material-symbols-outlined text-[18px]"
+                style={active ? { fontVariationSettings: "'FILL' 1" } : undefined}
+              >
+                {icon}
+              </span>
+              <span className="max-w-full truncate">{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <aside className="fixed left-0 top-0 z-40 hidden min-h-screen w-60 flex-col bg-slate-900 lg:flex">
       {/* Logo */}
       <div className="px-5 pt-6 pb-5 border-b border-slate-800">
         <div className="flex items-center gap-3">
@@ -80,6 +119,7 @@ export default function AdminSidebar({ email }: { email: string }) {
           <p className="text-slate-400 text-xs truncate">{email}</p>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

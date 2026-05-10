@@ -1,5 +1,6 @@
 // Supabase Edge Function — permanently deletes the calling user's account
-// and all of their data (habits, completions, profile, deletion-request rows).
+// and all of their data (habits, completions, profile), while preserving a
+// completed account-deletion audit row.
 //
 // Deploy:    npx supabase functions deploy delete-account
 // Invoke:    supabase.functions.invoke('delete-account')
@@ -60,9 +61,14 @@ serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   // Audit row first so we have a trail even if a later step fails.
-  await admin
+  const { data: auditRow, error: auditError } = await admin
     .from("account_deletion_requests")
-    .insert({ user_id: userId, email: user.email ?? null, reason, status: "processing" });
+    .insert({ user_id: userId, email: user.email ?? null, reason, status: "processing" })
+    .select("id")
+    .single();
+  if (auditError) return json({ error: `Failed to create deletion request: ${auditError.message}` }, 500);
+
+  const auditId = auditRow.id;
 
   // Best-effort cascade. The auth.users delete cascades via FK to habits,
   // habit_completions, profiles, account_deletion_requests, etc., but we
@@ -78,8 +84,7 @@ serve(async (req) => {
       await admin
         .from("account_deletion_requests")
         .update({ status: "requested" })
-        .eq("user_id", userId)
-        .eq("status", "processing");
+        .eq("id", auditId);
       return json({ error: `Failed to delete ${table}: ${error.message}` }, 500);
     }
   }
@@ -90,9 +95,16 @@ serve(async (req) => {
     await admin
       .from("account_deletion_requests")
       .update({ status: "requested" })
-      .eq("user_id", userId)
-      .eq("status", "processing");
+      .eq("id", auditId);
     return json({ error: `Failed to delete auth user: ${authError.message}` }, 500);
+  }
+
+  const { error: completeError } = await admin
+    .from("account_deletion_requests")
+    .update({ status: "completed", processed_at: new Date().toISOString() })
+    .eq("id", auditId);
+  if (completeError) {
+    return json({ error: `Account deleted, but failed to update deletion audit: ${completeError.message}` }, 500);
   }
 
   return json({ ok: true });

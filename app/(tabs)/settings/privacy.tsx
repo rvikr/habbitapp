@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ExpoLinking from "expo-linking";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { requestAccountDeletion } from "@/lib/actions";
 import { exportMyData } from "@/lib/privacy";
 import { isAnalyticsOptedOut, setAnalyticsOptOut } from "@/lib/analytics";

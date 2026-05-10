@@ -1,7 +1,8 @@
 import type { Habit, HabitCompletion } from "@/types/db";
-import { supabase, isSupabaseConfigured } from "./supabase/client";
+import { supabase, isSupabaseConfigured, getCurrentUser } from "./supabase/client";
 import { addLocalDays, localDateKey, localDateDaysAgo } from "./date";
 import { streakFromDates } from "./streak";
+import { XP_PER_LEVEL, levelForXp, xpForCompletions, xpInLevel } from "./xp";
 import type { Milestone } from "@/types/db";
 
 export type Insights = {
@@ -13,8 +14,7 @@ export type Insights = {
 const today = () => localDateKey();
 
 async function getUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  return getCurrentUser();
 }
 
 export async function getHabitsForToday() {
@@ -89,9 +89,7 @@ export async function getStats() {
 
   const completions = totalCompletions ?? 0;
   const habits = totalHabits ?? 0;
-  const totalXp = completions * 10;
-  const level = Math.floor(totalXp / 500) + 1;
-  const xpInLevel = totalXp % 500;
+  const totalXp = xpForCompletions(completions);
 
   return {
     displayName:
@@ -100,10 +98,10 @@ export async function getStats() {
       user.email?.split("@")[0] ??
       "there",
     email: user.email ?? null,
-    level,
-    xp: xpInLevel,
+    level: levelForXp(totalXp),
+    xp: xpInLevel(totalXp),
     totalXp,
-    xpForNext: 500,
+    xpForNext: XP_PER_LEVEL,
     currentStreak,
     totalCompletions: completions,
     totalHabits: habits,

@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/auth";
 import type { Habit, HabitCompletion } from "@/types/db";
+import { addDateKeyDays, dateDaysAgoInTimeZone, dateKeyInTimeZone } from "@/lib/date";
+import { getRequestTimeZone } from "@/lib/request-timezone";
 
 export type Insights = {
   mostProductiveDay: string | null;
@@ -7,15 +10,10 @@ export type Insights = {
   peakTimeLabel: string | null;
 };
 
-function todayKey() {
-  return new Date().toISOString().split("T")[0];
-}
-
 export async function getHabitsForToday() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const timeZone = await getRequestTimeZone();
+  const user = await getCurrentUser(supabase);
   if (!user)
     return {
       habits: [] as Habit[],
@@ -34,7 +32,7 @@ export async function getHabitsForToday() {
       supabase
         .from("habit_completions")
         .select("habit_id")
-        .eq("completed_on", todayKey()),
+        .eq("completed_on", dateKeyInTimeZone(new Date(), timeZone)),
       supabase
         .from("profiles")
         .select("display_name")
@@ -61,13 +59,11 @@ export async function getHabitsForToday() {
 
 export async function getStats() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const timeZone = await getRequestTimeZone();
+  const user = await getCurrentUser(supabase);
   if (!user) return null;
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgo = dateDaysAgoInTimeZone(30, timeZone);
 
   const [{ count: totalCompletions }, { count: totalHabits }, { data: recent }] =
     await Promise.all([
@@ -84,19 +80,18 @@ export async function getStats() {
         .from("habit_completions")
         .select("completed_on")
         .eq("user_id", user.id)
-        .gte("completed_on", thirtyDaysAgo.toISOString().split("T")[0])
+        .gte("completed_on", thirtyDaysAgo)
         .order("completed_on", { ascending: false }),
     ]);
 
   // Compute streak
   const activeDates = new Set((recent ?? []).map((r) => r.completed_on));
   let streak = 0;
-  const cursor = new Date();
+  let cursor = dateKeyInTimeZone(new Date(), timeZone);
   while (true) {
-    const key = cursor.toISOString().split("T")[0];
-    if (activeDates.has(key)) {
+    if (activeDates.has(cursor)) {
       streak++;
-      cursor.setDate(cursor.getDate() - 1);
+      cursor = addDateKeyDays(cursor, -1);
     } else {
       break;
     }
@@ -121,19 +116,14 @@ function peakHourLabel(hour: number): string {
   return "late at night";
 }
 
-function daysAgoKey(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString().split("T")[0];
-}
-
 export async function getInsights(): Promise<Insights> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const timeZone = await getRequestTimeZone();
+  const user = await getCurrentUser(supabase);
   if (!user) return { mostProductiveDay: null, consistencyChangePct: null, peakTimeLabel: null };
 
-  const cutoff = daysAgoKey(60);
-  const midpoint = daysAgoKey(30);
+  const cutoff = dateDaysAgoInTimeZone(60, timeZone);
+  const midpoint = dateDaysAgoInTimeZone(30, timeZone);
 
   const { data: rows } = await supabase
     .from("habit_completions")
@@ -170,13 +160,13 @@ export async function getInsights(): Promise<Insights> {
 
 export async function getWeeklyCompletions(): Promise<HabitCompletion[]> {
   const supabase = await createClient();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  const timeZone = await getRequestTimeZone();
+  const sevenDaysAgo = dateDaysAgoInTimeZone(6, timeZone);
 
   const { data } = await supabase
     .from("habit_completions")
     .select("*")
-    .gte("completed_on", sevenDaysAgo.toISOString().split("T")[0])
+    .gte("completed_on", sevenDaysAgo)
     .order("completed_on", { ascending: true });
 
   return (data ?? []) as HabitCompletion[];

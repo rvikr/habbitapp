@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Analytics" };
@@ -117,7 +117,7 @@ export default async function AnalyticsPage() {
   const maxCount = Math.max(...last7DaysByDate.map((d) => d.count), 1);
 
   return (
-    <div className="p-8 space-y-8 max-w-5xl">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl">
       <div>
         <h1 className="font-extrabold text-slate-900 text-2xl" style={{ letterSpacing: "-0.01em" }}>
           Analytics
@@ -132,7 +132,7 @@ export default async function AnalyticsPage() {
       {/* Retention cards */}
       <section className="space-y-3">
         <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wide">Retention</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <RetentionCard label="New Today"    value={newToday.toLocaleString()}   sub="signed up today"             icon="person_add"       />
           <RetentionCard label="Active Today" value={activeToday.toLocaleString()} sub="completed a habit today"    icon="task_alt"         />
           <RetentionCard label="7-Day Active" value={active7d.toLocaleString()}   sub="active in the last 7 days"   icon="date_range"       />
@@ -140,7 +140,7 @@ export default async function AnalyticsPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {/* Conversion funnel */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
           <div>

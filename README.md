@@ -19,7 +19,8 @@ cp .env.local.example .env.local
 # Edit .env.local with your Supabase project URL/key
 
 # 3. Apply DB schema + migrations (one time, in Supabase SQL editor)
-# Run supabase/schema.sql, then each file in supabase/migrations/ in order
+# Run supabase/schema.sql, then each file in supabase/migrations/ in order.
+# The migrations include leaderboard, admin, feedback, public stats, and deletion audit support.
 
 # 4. Run
 npx expo start
@@ -42,6 +43,18 @@ EXPO_PUBLIC_PRIVACY_POLICY_URL=https://your-domain.example/privacy
 All `EXPO_PUBLIC_*` vars are bundled into the client at build time. Don't put service-role
 keys here.
 
+`website/.env.local`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+ADMIN_EMAILS=admin@example.com,owner@example.com
+```
+
+The service-role key is server-only for the Next admin app. Never expose it through
+`NEXT_PUBLIC_*` variables.
+
 ---
 
 ## Project layout
@@ -49,7 +62,7 @@ keys here.
 ```
 app/                       Expo Router screens (file-based routing)
   _layout.tsx              Root: ErrorBoundary, ThemeProvider, Auth guard
-  +html.tsx                Web HTML shell (PWA manifest, OG tags, SEO)
+  +html.tsx                Static-rendering HTML shell; SPA export uses public/index.html
   login.tsx                Auth screen (sign in / sign up / forgot password)
   (tabs)/                  Bottom tab group
     index.tsx              Dashboard (today's habits, progress ring)
@@ -76,10 +89,12 @@ lib/                       Shared logic (no UI)
 
 types/db.ts                Shared TypeScript types (Habit, HabitCompletion, Badge)
 supabase/schema.sql        Postgres schema + RLS policies
+supabase/migrations/       Ordered SQL migrations for app, web, and admin features
 supabase/functions/        Edge Functions (e.g. delete-account)
 
 assets/                    App icons, splash, notification icon, share image
 public/                    Web-only static files (manifest, favicon, PWA icons, OG image)
+  index.html               Expo web SPA template with PWA/OG/Apple metadata
 website/                   Separate Next.js admin + marketing site (own package.json)
 ```
 
@@ -110,6 +125,13 @@ npx expo start --clear          # Clear bundler cache
 
 # Quality
 npx tsc --noEmit                # Typecheck
+npm test                        # Unit tests
+
+# Next website/admin
+cd website
+npm run typecheck
+npm run lint
+npm run build
 
 # Builds (requires `npx eas-cli login`)
 npx eas-cli build -p ios --profile preview

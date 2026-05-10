@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { toggleHabit } from "@/app/(app)/dashboard/actions";
+import { localDateKey } from "@/lib/date";
 import type { Habit } from "@/types/db";
 
 const COLOR_MAP: Record<string, { bg: string; ic: string }> = {
@@ -22,7 +23,7 @@ function HabitRow({
   const { bg, ic } = COLOR_MAP[habit.color] ?? COLOR_MAP.neutral;
 
   function toggle() {
-    startTransition(() => toggleHabit(habit.id, done));
+    startTransition(() => toggleHabit(habit.id, done, localDateKey()));
   }
 
   return (

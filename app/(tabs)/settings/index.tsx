@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+﻿import { useState, useCallback } from "react";
 import Constants from "expo-constants";
 import { requestReviewManually } from "@/lib/store-review";
 
@@ -8,8 +8,8 @@ const APP_VERSION = Constants.expoConfig?.version ?? "—";
 import { Alert, Linking, Platform, View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { supabase } from "@/lib/supabase/client";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { supabase, getCurrentUser } from "@/lib/supabase/client";
 import { signOut } from "@/lib/actions";
 import { avatarFromUser } from "@/lib/avatar";
 import { useTheme } from "@/components/theme-provider";
@@ -35,7 +35,7 @@ export default function SettingsScreen() {
   const [user, setUser] = useState<UserInfo | null>(null);
 
   const load = useCallback(async () => {
-    const { data: { user: u } } = await supabase.auth.getUser();
+    const u = await getCurrentUser();
     if (u) {
       const { data: profile } = await supabase
         .from("profiles")

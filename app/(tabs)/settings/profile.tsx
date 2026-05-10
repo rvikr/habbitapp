@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { supabase } from "@/lib/supabase/client";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { getCurrentUser } from "@/lib/supabase/client";
 import { updateAvatar } from "@/lib/actions";
 import { type AvatarStyle } from "@/lib/avatar";
 import AvatarPicker from "@/components/avatar-picker";
@@ -18,7 +18,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
       if (cancelled || !user) return;
       setStyle((user.user_metadata?.avatar_style as AvatarStyle) ?? "avataaars");
       setSeed((user.user_metadata?.avatar_seed as string) ?? user.id.slice(0, 12));

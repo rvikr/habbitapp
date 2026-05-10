@@ -1,5 +1,5 @@
-import { TouchableOpacity, StyleSheet } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+﻿import { TouchableOpacity, StyleSheet } from "react-native";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 type Props = { onPress: () => void };
 

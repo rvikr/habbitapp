@@ -1,8 +1,8 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { submitFeedback, type FeedbackCategory } from "@/lib/feedback";
 
 const CATEGORIES: Array<{ id: FeedbackCategory; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }> = [

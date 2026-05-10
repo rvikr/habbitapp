@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { requestPermission, getPermissionStatus } from "@/lib/notifications";
 
 export default function NotificationPermissionCard() {

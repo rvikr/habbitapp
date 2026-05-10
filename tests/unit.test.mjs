@@ -1,9 +1,22 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { localDateDaysAgo, localDateKey } from "../lib/date.ts";
+import { XP_PER_COMPLETION, XP_PER_LEVEL, levelForXp, xpForCompletions, xpInLevel } from "../lib/xp.ts";
 import { validatePassword } from "../lib/password.ts";
+import { isMissingRefreshTokenError } from "../lib/supabase/auth-error.ts";
 import { isValidReminderTime, parseOptionalPositiveNumber, validateFeedback } from "../lib/validation.ts";
 import { streakFromDates } from "../lib/streak.ts";
+import {
+  dateKeyInTimeZone,
+  isValidDateKey,
+  localDateKey as websiteLocalDateKey,
+} from "../website/lib/date.ts";
+import {
+  XP_PER_COMPLETION as WEBSITE_XP_PER_COMPLETION,
+  XP_PER_LEVEL as WEBSITE_XP_PER_LEVEL,
+} from "../website/lib/xp.ts";
+import { isMissingRefreshTokenError as websiteIsMissingRefreshTokenError } from "../website/lib/supabase/auth-error.ts";
 
 function test(name, fn) {
   try {
@@ -21,6 +34,41 @@ test("localDateKey uses local calendar fields", () => {
 
 test("localDateDaysAgo crosses month boundaries", () => {
   assert.equal(localDateDaysAgo(1, new Date(2026, 0, 1, 8, 0)), "2025-12-31");
+});
+
+test("website date helpers preserve browser-local calendar days", () => {
+  const boundary = new Date("2026-01-01T23:30:00.000Z");
+  assert.equal(dateKeyInTimeZone(boundary, "UTC"), "2026-01-01");
+  assert.equal(dateKeyInTimeZone(boundary, "Asia/Kolkata"), "2026-01-02");
+  assert.equal(websiteLocalDateKey(new Date(2026, 0, 2, 23, 30)), "2026-01-02");
+});
+
+test("date key validation accepts only real yyyy-mm-dd calendar dates", () => {
+  assert.equal(isValidDateKey("2026-05-10"), true);
+  assert.equal(isValidDateKey("2026-02-30"), false);
+  assert.equal(isValidDateKey("05/10/2026"), false);
+});
+
+test("XP constants are canonical across app, website, and SQL", () => {
+  assert.equal(XP_PER_COMPLETION, 10);
+  assert.equal(XP_PER_LEVEL, 500);
+  assert.equal(WEBSITE_XP_PER_COMPLETION, XP_PER_COMPLETION);
+  assert.equal(WEBSITE_XP_PER_LEVEL, XP_PER_LEVEL);
+  assert.equal(xpForCompletions(51), 510);
+  assert.equal(levelForXp(0), 1);
+  assert.equal(levelForXp(500), 2);
+  assert.equal(xpInLevel(510), 10);
+
+  const sql = readFileSync("supabase/migrations/0008_release_readiness.sql", "utf8");
+  assert.match(sql, /count\(\*\)::bigint \* 10 as xp/);
+  assert.match(sql, /\/ 500 \+ 1 as level/);
+});
+
+test("Supabase stale refresh token errors are recognized", () => {
+  const error = new Error("Invalid Refresh Token: Refresh Token Not Found");
+  assert.equal(isMissingRefreshTokenError(error), true);
+  assert.equal(websiteIsMissingRefreshTokenError({ message: "refresh_token_not_found" }), true);
+  assert.equal(isMissingRefreshTokenError(new Error("Network request failed")), false);
 });
 
 test("password validation rejects weak passwords", () => {

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getHabitsForToday, getWeeklyCompletions, getInsights } from "@/lib/habits";
 import type { Insights } from "@/lib/habits";
+import { addDateKeyDays, dateKeyInTimeZone, dayIndexForDateKey } from "@/lib/date";
+import { getRequestTimeZone } from "@/lib/request-timezone";
 import HabitList from "@/components/HabitList";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -64,11 +66,10 @@ export default async function DashboardPage() {
   const dashOffset = circumference - (pct / 100) * circumference;
 
   // Build a map of date → completion count for the last 7 days
-  const today = new Date();
+  const timeZone = await getRequestTimeZone();
+  const todayKey = dateKeyInTimeZone(new Date(), timeZone);
   const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - 6 + i);
-    return d.toISOString().split("T")[0];
+    return addDateKeyDays(todayKey, -6 + i);
   });
   const completionsByDate = weeklyCompletions.reduce<Record<string, number>>(
     (acc, c) => { acc[c.completed_on] = (acc[c.completed_on] ?? 0) + 1; return acc; },
@@ -76,9 +77,9 @@ export default async function DashboardPage() {
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col xl:flex-row">
       {/* ── Main ─────────────────────────────────────────── */}
-      <div className="flex-1 p-8 space-y-8 max-w-3xl">
+      <div className="w-full flex-1 space-y-6 p-4 sm:p-6 lg:p-8 xl:max-w-3xl">
 
         {/* Header */}
         <div className="flex items-start justify-between">
@@ -97,9 +98,9 @@ export default async function DashboardPage() {
         </div>
 
         {/* Progress + streak bento */}
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           {/* Progress ring */}
-          <div className="col-span-2 bg-white rounded-3xl p-6 shadow-card border border-outline-variant/20 flex items-center gap-6">
+          <div className="bg-white rounded-3xl p-5 shadow-card border border-outline-variant/20 flex flex-col gap-5 sm:col-span-2 sm:flex-row sm:items-center sm:p-6">
             <div className="relative w-28 h-28 flex-shrink-0">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="46" fill="none" stroke="#f1f5f9" strokeWidth="8" />
@@ -155,11 +156,11 @@ export default async function DashboardPage() {
         <section className="bg-white rounded-3xl p-6 shadow-card border border-outline-variant/15 space-y-4">
           <h2 className="font-bold text-on-background text-xl">Weekly Overview</h2>
           <div className="flex items-end gap-3 h-24">
-            {weekDays.map((date, i) => {
+            {weekDays.map((date) => {
               const count = completionsByDate[date] ?? 0;
-              const isToday = date === today.toISOString().split("T")[0];
+              const isToday = date === todayKey;
               const heightPct = total > 0 ? Math.min((count / total) * 100, 100) : 0;
-              const dayLabel = DAYS[(new Date(date).getDay() + 6) % 7];
+              const dayLabel = DAYS[(dayIndexForDateKey(date) + 6) % 7];
               return (
                 <div key={date} className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full rounded-lg relative" style={{ height: "100%" }}>
@@ -183,7 +184,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── Right Aside ──────────────────────────────────── */}
-      <aside className="w-72 flex-shrink-0 p-6 space-y-6">
+      <aside className="w-full flex-shrink-0 space-y-6 p-4 sm:p-6 xl:w-72">
         {/* Quick tip */}
         <div className="bg-white rounded-3xl p-5 shadow-card border border-outline-variant/15 space-y-3">
           <div className="flex items-center gap-2">
