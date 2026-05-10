@@ -46,7 +46,7 @@ export default function AuthCallbackScreen() {
 
       setStatus("success");
       setTimeout(() => {
-        if (!cancelled) router.replace("/" as never);
+        if (!cancelled) router.replace({ pathname: "/", params: { newUser: "1" } } as never);
       }, 2000);
     }
 

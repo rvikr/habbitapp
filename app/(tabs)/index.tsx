@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Alert, View, Text, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getHabitsForToday, getInsights } from "@/lib/habits";
 import { toggleHabit } from "@/lib/actions";
@@ -30,6 +30,8 @@ export default function DashboardScreen() {
   const primaryTrack = colorScheme === "dark" ? "#3d3450" : "#c9c4d7";
   const [data, setData] = useState<DashboardData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const { newUser } = useLocalSearchParams<{ newUser?: string }>();
+  const [showWelcome, setShowWelcome] = useState(newUser === "1");
 
   const load = useCallback(async () => {
     const [result, insights] = await Promise.all([getHabitsForToday(), getInsights()]);
@@ -72,6 +74,21 @@ export default function DashboardScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        {/* Welcome banner — shown once after new account creation */}
+        {showWelcome && (
+          <TouchableOpacity
+            onPress={() => setShowWelcome(false)}
+            className="mx-margin-mobile mt-md mb-xs bg-primary-fixed dark:bg-d-surface-container rounded-xl p-md flex-row items-center gap-md"
+          >
+            <MaterialCommunityIcons name="party-popper" size={22} color={primary} />
+            <View className="flex-1">
+              <Text className="text-body-sm text-on-background dark:text-d-on-background font-semibold">Welcome to Lagan!</Text>
+              <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">You're all set. Add your first habit to get started.</Text>
+            </View>
+            <MaterialCommunityIcons name="close" size={18} color={primary} />
+          </TouchableOpacity>
+        )}
+
         {/* Header */}
         <View className="flex-row items-center justify-between px-margin-mobile pt-md pb-sm">
           <View>

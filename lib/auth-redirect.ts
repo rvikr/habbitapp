@@ -3,8 +3,6 @@ import * as Linking from "expo-linking";
 export const AUTH_CALLBACK_PATH = "auth/callback";
 
 export function authCallbackUrl() {
-  const base = process.env.EXPO_PUBLIC_APP_URL;
-  if (base) return `${base.replace(/\/$/, "")}/${AUTH_CALLBACK_PATH}`;
   return Linking.createURL(AUTH_CALLBACK_PATH);
 }
 
