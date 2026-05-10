@@ -2,11 +2,17 @@ import type { Metadata } from "next";
 import { getStats } from "@/lib/habits";
 import { computeBadges } from "@/lib/badges";
 import ShareButton from "@/components/share-button";
+import { getBadgeShareMessage } from "@/lib/share-messages";
 import type { Badge } from "@/types/db";
 
 const APP_URL = "https://lagan.health";
 
-export const metadata: Metadata = { title: "Achievements" };
+export const metadata: Metadata = {
+  title: "Achievements",
+  openGraph: {
+    images: [`${APP_URL}/api/og/card?type=badge&id=diamond&tone=purple`],
+  },
+};
 export const dynamic = "force-dynamic";
 
 const TONE_MAP: Record<Badge["tone"], { bg: string; ic: string; tag: string }> = {
@@ -20,6 +26,10 @@ const TONE_MAP: Record<Badge["tone"], { bg: string; ic: string; tag: string }> =
 
 function BadgeCard({ badge }: { badge: Badge }) {
   const tone = TONE_MAP[badge.tone];
+  const { tagline } = getBadgeShareMessage(badge.id, badge.name);
+  const cardUrl = `/api/og/card?type=badge&id=${badge.id}&name=${encodeURIComponent(badge.name)}&tone=${badge.tone}`;
+  const shareText = `${tagline}\n\nEarned the "${badge.name}" badge on Lagan.`;
+
   return (
     <div
       className={`bg-white rounded-3xl p-5 shadow-[0_2px_16px_rgba(0,0,0,0.05)] border border-outline-variant/15 flex flex-col items-center gap-3 text-center transition-all duration-200 ${
@@ -49,8 +59,9 @@ function BadgeCard({ badge }: { badge: Badge }) {
             Earned
           </span>
           <ShareButton
-            shareText={`I just earned the "${badge.name}" badge on Lagan! 🏆\n${badge.description}`}
+            shareText={shareText}
             shareUrl={`${APP_URL}/achievements`}
+            cardUrl={cardUrl}
             label="Share"
           />
         </div>

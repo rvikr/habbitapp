@@ -5,6 +5,7 @@ import { useState, useCallback } from "react";
 interface Props {
   shareText: string;
   shareUrl: string;
+  cardUrl?: string;
   label?: string;
   className?: string;
 }
@@ -84,21 +85,35 @@ const PLATFORMS = [
   },
 ];
 
-export default function ShareButton({ shareText, shareUrl, label = "Share", className = "" }: Props) {
+export default function ShareButton({ shareText, shareUrl, cardUrl, label = "Share", className = "" }: Props) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   const handleOpen = useCallback(async () => {
     if (typeof navigator !== "undefined" && navigator.share) {
+      // Try sharing with the card image file when supported
+      if (cardUrl && navigator.canShare) {
+        try {
+          const blob = await fetch(cardUrl).then((r) => r.blob());
+          const file = new File([blob], "lagan-card.png", { type: "image/png" });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], text: shareText, url: shareUrl });
+            return;
+          }
+        } catch {
+          // fall through
+        }
+      }
       try {
         await navigator.share({ text: shareText, url: shareUrl });
         return;
       } catch {
-        // fall through to modal (user cancelled or not supported)
+        // fall through to modal
       }
     }
     setOpen(true);
-  }, [shareText, shareUrl]);
+  }, [shareText, shareUrl, cardUrl]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -140,10 +155,51 @@ export default function ShareButton({ shareText, shareUrl, label = "Share", clas
               </button>
             </div>
 
-            {/* Preview text */}
-            <p className="text-sm text-on-surface-variant mb-5 leading-relaxed bg-surface-container rounded-2xl p-3 line-clamp-3">
-              {shareText}
-            </p>
+            {/* Card preview */}
+            {cardUrl && (
+              <div className="mb-5 space-y-2">
+                <div className="relative w-full rounded-2xl overflow-hidden bg-[#0D0D0D]" style={{ aspectRatio: "1200/630" }}>
+                  {!imgLoaded && (
+                    <div className="absolute inset-0 animate-pulse bg-neutral-800 rounded-2xl" />
+                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={cardUrl}
+                    alt="Your Lagan achievement card"
+                    loading="eager"
+                    className="w-full h-full object-cover"
+                    onLoad={() => setImgLoaded(true)}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href={cardUrl}
+                    download="lagan-card.png"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#0D0D0D] text-white hover:bg-black/80 transition-colors text-xs font-semibold"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="material-symbols-outlined text-sm leading-none">download</span>
+                    Save Card
+                  </a>
+                  <a
+                    href={`${cardUrl}&ratio=portrait`}
+                    download="lagan-card-story.png"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container transition-colors text-xs font-semibold"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="material-symbols-outlined text-sm leading-none">crop_portrait</span>
+                    For Stories
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Preview text (shown when no card) */}
+            {!cardUrl && (
+              <p className="text-sm text-on-surface-variant mb-5 leading-relaxed bg-surface-container rounded-2xl p-3 line-clamp-3">
+                {shareText}
+              </p>
+            )}
 
             {/* Platform grid */}
             <div className="grid grid-cols-3 gap-3 mb-4">

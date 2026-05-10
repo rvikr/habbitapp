@@ -3,11 +3,17 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStats } from "@/lib/habits";
 import ShareButton from "@/components/share-button";
+import { getRankShareMessage } from "@/lib/share-messages";
 import { redirect } from "next/navigation";
 
 const APP_URL = "https://lagan.health";
 
-export const metadata: Metadata = { title: "Leaderboard — Lagan" };
+export const metadata: Metadata = {
+  title: "Leaderboard — Lagan",
+  openGraph: {
+    images: [`${APP_URL}/api/og/card?type=rank&rank=1&streak=30&pct=1`],
+  },
+};
 export const dynamic = "force-dynamic";
 
 type Period = "week" | "month" | "all";
@@ -115,6 +121,16 @@ export default async function LeaderboardPage({
 
   const top3 = board.slice(0, 3);
   const rest = board.slice(3);
+
+  const rankMsg = userRank
+    ? getRankShareMessage({ rank: userRank, streak: userStreak, topPct })
+    : null;
+  const rankCardUrl = userRank
+    ? `/api/og/card?type=rank&rank=${userRank}&streak=${userStreak}&pct=${topPct ?? 50}`
+    : null;
+  const rankShareText = rankMsg
+    ? `${rankMsg.tagline}\n\nJoin me on Lagan — lagan.health/leaderboard`
+    : "";
 
   // Podium order: 2nd, 1st, 3rd
   const podiumOrder = [top3[1], top3[0], top3[2]];
@@ -398,10 +414,11 @@ export default async function LeaderboardPage({
                 Top {topPct}%
               </span>
             )}
-            {userRank && (
+            {userRank && rankMsg && (
               <ShareButton
-                shareText={`I'm ranked #${userRank} globally on Lagan! 🏅\n${userXP.toLocaleString()} XP · Level ${userLevel} · ${userStreak} day streak`}
+                shareText={rankShareText}
                 shareUrl={`${APP_URL}/leaderboard`}
+                cardUrl={rankCardUrl ?? undefined}
                 label="Share rank"
                 className="text-white/80 hover:text-white"
               />

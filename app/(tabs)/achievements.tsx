@@ -5,7 +5,7 @@ import { useFocusEffect } from "expo-router";
 import { getStats, getMilestones } from "@/lib/habits";
 import { BADGE_DEFS, type ComputedBadge } from "@/lib/badges";
 import BadgeGrid from "@/components/badge-grid";
-import { shareBadge } from "@/lib/share";
+import ShareCardModal, { type ShareCardData } from "@/components/share-card-modal";
 import type { Milestone } from "@/types/db";
 
 type StatsData = Awaited<ReturnType<typeof getStats>>;
@@ -15,6 +15,7 @@ export default function AchievementsScreen() {
   const [badges, setBadges] = useState<ComputedBadge[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [shareData, setShareData] = useState<ShareCardData | null>(null);
 
   const load = useCallback(async () => {
     const s = await getStats();
@@ -40,7 +41,7 @@ export default function AchievementsScreen() {
   const onRefresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
 
   const handleShareBadge = useCallback((badge: ComputedBadge) => {
-    shareBadge(badge.name, badge.description);
+    setShareData({ kind: "badge", id: badge.id, name: badge.name, description: badge.description, tone: badge.tone });
   }, []);
 
   const xpPct = stats ? (stats.xp / stats.xpForNext) * 100 : 0;
@@ -106,6 +107,11 @@ export default function AchievementsScreen() {
           </View>
         )}
       </ScrollView>
+
+      <ShareCardModal
+        data={shareData}
+        onClose={() => setShareData(null)}
+      />
     </SafeAreaView>
   );
 }

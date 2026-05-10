@@ -5,7 +5,7 @@ import { useFocusEffect } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getLeaderboard, getMyProfile, setDisplayName, getMyRank, type LeaderboardEntry, type Profile } from "@/lib/leaderboard";
 import { avatarUrl, type AvatarStyle } from "@/lib/avatar";
-import { shareRank } from "@/lib/share";
+import ShareCardModal, { type ShareCardData } from "@/components/share-card-modal";
 
 export default function LeaderboardScreen() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -16,6 +16,7 @@ export default function LeaderboardScreen() {
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareData, setShareData] = useState<ShareCardData | null>(null);
 
   const load = useCallback(async () => {
     const [board, prof, rank] = await Promise.all([getLeaderboard(50), getMyProfile(), getMyRank()]);
@@ -98,8 +99,8 @@ export default function LeaderboardScreen() {
             </View>
             <TouchableOpacity
               onPress={() => {
-                const me = entries.find((e) => profile?.user_id === e.user_id);
-                shareRank(myRank, me?.total_xp ?? 0, me?.level ?? 1, 0);
+                const topPct = entries.length > 0 ? Math.ceil((myRank / entries.length) * 100) : null;
+                setShareData({ kind: "rank", rank: myRank, streak: 0, topPct });
               }}
               hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
               className="p-xs"
@@ -135,6 +136,11 @@ export default function LeaderboardScreen() {
         onSave={handleOptIn}
         onOptOut={handleOptOut}
         onDismiss={() => { setShowOptIn(false); setError(null); }}
+      />
+
+      <ShareCardModal
+        data={shareData}
+        onClose={() => setShareData(null)}
       />
     </SafeAreaView>
   );
