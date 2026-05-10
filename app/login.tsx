@@ -29,8 +29,13 @@ export default function LoginScreen() {
   }
 
   async function handleSubmit() {
-    if (!email || !password) {
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || !password) {
       setError("Email and password are required.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Enter a valid email address.");
       return;
     }
     if (mode === "signup") {
@@ -46,10 +51,10 @@ export default function LoginScreen() {
     setMessage(null);
     try {
       if (mode === "signin") {
-        const { error: e } = await signIn(email, password);
+        const { error: e } = await signIn(trimmedEmail, password);
         if (e) setError(e.message);
       } else {
-        const { data, error: e } = await signUp(email, password);
+        const { data, error: e } = await signUp(trimmedEmail, password);
         if (e) {
           setError(e.message);
         } else if (!data?.user || data.user.identities?.length === 0) {
@@ -215,11 +220,16 @@ function ForgotPasswordModal({ visible, onDismiss, initialEmail }: { visible: bo
   const [feedback, setFeedback] = useState<{ text: string; type: "error" | "success" } | null>(null);
 
   async function send() {
-    if (!email) { setFeedback({ text: "Email is required.", type: "error" }); return; }
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) { setFeedback({ text: "Email is required.", type: "error" }); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setFeedback({ text: "Enter a valid email address.", type: "error" });
+      return;
+    }
     setSending(true);
     setFeedback(null);
     try {
-      const { error } = await resetPassword(email);
+      const { error } = await resetPassword(trimmedEmail);
       if (error) setFeedback({ text: error.message, type: "error" });
       else setFeedback({ text: "Reset link sent. Check your email.", type: "success" });
     } catch {

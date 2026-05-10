@@ -40,23 +40,23 @@ export default function PrivacyScreen() {
 
   function handleDeletionRequest() {
     Alert.alert(
-      "Request account deletion?",
-      "This records a deletion request for your account and habit data. You will be contacted or processed by the backend operator.",
+      "Delete account?",
+      "This permanently removes your account and all your data (habits, completions, profile). This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Request deletion",
+          text: "Delete forever",
           style: "destructive",
           onPress: async () => {
             setSavingDeletion(true);
             const result = await requestAccountDeletion(reason);
             setSavingDeletion(false);
             if (!result.ok) {
-              Alert.alert("Could not request deletion", result.error ?? "Try again.");
+              Alert.alert("Could not delete account", result.error ?? "Try again.");
               return;
             }
             setReason("");
-            Alert.alert("Deletion requested", "Your request has been recorded.");
+            router.replace("/login");
           },
         },
       ],

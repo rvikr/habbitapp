@@ -7,7 +7,7 @@ import { parseOptionalPositiveNumber } from "@/lib/validation";
 type Props = {
   visible: boolean;
   habit: Habit | null;
-  onSubmit: (value: number, note: string) => void;
+  onSubmit: (value: number, note: string) => Promise<{ ok: boolean; error?: string }> | void;
   onDismiss: () => void;
 };
 
@@ -15,17 +15,27 @@ export default function LogPrompt({ visible, habit, onSubmit, onDismiss }: Props
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const parsed = parseOptionalPositiveNumber(value);
     if (!parsed.ok) {
       setError("Enter a positive value.");
       return;
     }
     setError(null);
-    onSubmit(parsed.value ?? 1, note);
-    setValue("");
-    setNote("");
+    setSubmitting(true);
+    try {
+      const result = await onSubmit(parsed.value ?? 1, note);
+      if (result && !result.ok) {
+        setError(result.error ?? "Could not save. Try again.");
+        return;
+      }
+      setValue("");
+      setNote("");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -62,8 +72,8 @@ export default function LogPrompt({ visible, habit, onSubmit, onDismiss }: Props
             numberOfLines={2}
           />
           {error && <Text className="text-error text-label-sm mb-sm">{error}</Text>}
-          <TouchableOpacity className="bg-primary rounded-full py-sm items-center" onPress={handleSubmit}>
-            <Text className="text-on-primary text-label-lg font-semibold">Log</Text>
+          <TouchableOpacity className="bg-primary rounded-full py-sm items-center" onPress={handleSubmit} disabled={submitting}>
+            <Text className="text-on-primary text-label-lg font-semibold">{submitting ? "Saving..." : "Log"}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

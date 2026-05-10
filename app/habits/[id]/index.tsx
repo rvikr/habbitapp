@@ -55,15 +55,13 @@ export default function HabitDetailScreen() {
   }
 
   async function handleLog(value: number, note: string) {
-    if (!habit) return;
+    if (!habit) return { ok: false, error: "Habit not loaded." };
     const result = await logCompletion(habit.id, value, note);
-    if (!result.ok) {
-      Alert.alert("Could not log progress", result.error ?? "Try again.");
-      return;
-    }
+    if (!result.ok) return result;
     setShowLogPrompt(false);
     celebrate();
     load();
+    return result;
   }
 
   async function handleDelete() {

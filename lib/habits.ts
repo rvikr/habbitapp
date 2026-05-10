@@ -1,6 +1,7 @@
 import type { Habit, HabitCompletion } from "@/types/db";
 import { supabase, isSupabaseConfigured } from "./supabase/client";
 import { addLocalDays, localDateKey, localDateDaysAgo } from "./date";
+import { streakFromDates } from "./streak";
 import type { Milestone } from "@/types/db";
 
 export type Insights = {
@@ -144,20 +145,7 @@ export function weekProgressFor(habitId: string, completions: HabitCompletion[])
 }
 
 export function streakFor(completions: HabitCompletion[]) {
-  if (completions.length === 0) return 0;
-  const sorted = [...completions].map((c) => c.completed_on).sort().reverse();
-  let streak = 0;
-  const cursor = new Date();
-  for (const day of sorted) {
-    const key = localDateKey(cursor);
-    if (day === key) {
-      streak++;
-      cursor.setDate(cursor.getDate() - 1);
-    } else if (day < key) {
-      break;
-    }
-  }
-  return streak;
+  return streakFromDates(completions.map((c) => c.completed_on));
 }
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

@@ -12,7 +12,7 @@ export default function AccountDeletionPage() {
           Account deletion
         </Text>
         <Text className="text-body-md text-on-surface-variant dark:text-d-on-surface-variant">
-          Sign in, then open Settings, Privacy & Data, and Request account deletion. The request records the account and data to be deleted by the production operator.
+          Sign in, then open Settings, Privacy & Data, and Request account deletion. Your account and all your data (habits, completions, profile) are removed permanently within seconds.
         </Text>
         <TouchableOpacity className="bg-primary rounded-full py-sm items-center" onPress={() => router.replace("/login")}>
           <Text className="text-on-primary text-label-lg font-semibold">Sign in</Text>

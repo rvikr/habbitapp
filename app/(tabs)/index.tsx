@@ -49,15 +49,19 @@ export default function DashboardScreen() {
   async function handleToggle(habitId: string) {
     if (!data) return;
     const wasDone = data.completedToday.has(habitId);
-    const next = new Set(data.completedToday);
+    const previous = data.completedToday;
+    const next = new Set(previous);
     if (wasDone) next.delete(habitId);
-    else { next.add(habitId); celebrate(); }
+    else next.add(habitId);
     setData({ ...data, completedToday: next });
     const result = await toggleHabit(habitId, wasDone);
     if (!result.ok) {
-      setData(data);
+      setData((current) => current ? { ...current, completedToday: previous } : current);
       Alert.alert("Could not update habit", result.error ?? "Try again.");
-    } else if (!wasDone) {
+      return;
+    }
+    if (!wasDone) {
+      celebrate();
       recordCompletionAndMaybeReview();
     }
   }

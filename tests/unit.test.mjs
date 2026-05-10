@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { localDateDaysAgo, localDateKey } from "../lib/date.ts";
 import { validatePassword } from "../lib/password.ts";
 import { isValidReminderTime, parseOptionalPositiveNumber, validateFeedback } from "../lib/validation.ts";
+import { streakFromDates } from "../lib/streak.ts";
 
 function test(name, fn) {
   try {
@@ -46,4 +47,40 @@ test("feedback validation requires useful message and valid rating", () => {
   assert.equal(validateFeedback({ rating: 5, message: "Great, but reminders need snooze." }), null);
   assert.equal(validateFeedback({ rating: 5, message: "too short" })?.includes("10 characters"), true);
   assert.equal(validateFeedback({ rating: 6, message: "This message is long enough." })?.includes("rating"), true);
+});
+
+test("streakFromDates returns 0 for empty input", () => {
+  assert.equal(streakFromDates([]), 0);
+});
+
+test("streakFromDates counts consecutive days ending today", () => {
+  const today = new Date(2026, 4, 10);
+  const dates = [
+    localDateKey(today),
+    localDateDaysAgo(1, today),
+    localDateDaysAgo(2, today),
+  ];
+  assert.equal(streakFromDates(dates, today), 3);
+});
+
+test("streakFromDates breaks on a missing day", () => {
+  const today = new Date(2026, 4, 10);
+  const dates = [
+    localDateKey(today),
+    localDateDaysAgo(2, today),
+    localDateDaysAgo(3, today),
+  ];
+  assert.equal(streakFromDates(dates, today), 1);
+});
+
+test("streakFromDates is 0 when latest completion is older than today", () => {
+  const today = new Date(2026, 4, 10);
+  const dates = [localDateDaysAgo(1, today), localDateDaysAgo(2, today)];
+  assert.equal(streakFromDates(dates, today), 0);
+});
+
+test("streakFromDates ignores duplicate days", () => {
+  const today = new Date(2026, 4, 10);
+  const key = localDateKey(today);
+  assert.equal(streakFromDates([key, key, localDateDaysAgo(1, today)], today), 2);
 });

@@ -76,13 +76,27 @@ lib/                       Shared logic (no UI)
 
 types/db.ts                Shared TypeScript types (Habit, HabitCompletion, Badge)
 supabase/schema.sql        Postgres schema + RLS policies
+supabase/functions/        Edge Functions (e.g. delete-account)
 
 assets/                    App icons, splash, notification icon, share image
 public/                    Web-only static files (manifest, favicon, PWA icons, OG image)
+website/                   Separate Next.js admin + marketing site (own package.json)
 ```
 
 The platform-specific files (`*.native.ts` / `*.web.ts`) are picked automatically by Metro
 at bundle time. The accompanying `*.ts` files are TypeScript stubs.
+
+### Two apps in one repo
+
+This repository contains two separately-built apps that share the same Supabase backend:
+
+- **Root (`app/`, `components/`, `lib/`, etc.)** — the Expo SDK 54 universal app for iOS,
+  Android, and the web. This is what `npm start` / `expo start` runs.
+- **`website/`** — a Next.js 15 admin and marketing site with its own `package.json`,
+  `tsconfig.json`, and dependencies. Build it with `cd website && npm run build`. It is
+  excluded from the Expo TypeScript project (see root `tsconfig.json` `exclude`).
+
+If you only want to work on the mobile/web app, ignore the `website/` directory entirely.
 
 ---
 

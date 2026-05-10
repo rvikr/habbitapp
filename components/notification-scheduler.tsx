@@ -1,22 +1,32 @@
 import { useEffect } from "react";
+import { Platform } from "react-native";
 import { useRouter } from "expo-router";
-import * as Notifications from "expo-notifications";
 import { syncScheduledReminders } from "@/lib/reminder-sync";
 
 export default function NotificationScheduler() {
   const router = useRouter();
 
   useEffect(() => {
+    if (Platform.OS === "web") return;
+
     syncScheduledReminders();
 
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const habitId = response.notification.request.content.data?.habitId as string | undefined;
-      if (habitId) {
-        router.push(`/habits/${habitId}`);
-      }
-    });
+    let cancelled = false;
+    let remove: (() => void) | undefined;
+    (async () => {
+      const Notifications = await import("expo-notifications");
+      if (cancelled) return;
+      const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+        const habitId = response.notification.request.content.data?.habitId as string | undefined;
+        if (habitId) router.push(`/habits/${habitId}`);
+      });
+      remove = () => sub.remove();
+    })();
 
-    return () => sub.remove();
+    return () => {
+      cancelled = true;
+      remove?.();
+    };
   }, []);
 
   return null;

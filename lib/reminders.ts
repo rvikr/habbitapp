@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from "./supabase/client";
-import { localDateKey, localDateDaysAgo } from "./date";
+import { localDateDaysAgo } from "./date";
+import { streakFromDates } from "./streak";
 
 export type ReminderContext = {
   streak: number;
@@ -15,23 +16,6 @@ export type ScheduledReminder = {
   icon: string;
   context: ReminderContext;
 };
-
-function habitStreak(completedDates: string[]): number {
-  if (completedDates.length === 0) return 0;
-  const sorted = [...completedDates].sort().reverse();
-  let streak = 0;
-  const cursor = new Date();
-  for (const day of sorted) {
-    const key = localDateKey(cursor);
-    if (day === key) {
-      streak++;
-      cursor.setDate(cursor.getDate() - 1);
-    } else if (day < key) {
-      break;
-    }
-  }
-  return streak;
-}
 
 // Returns the hour (0–23) the user most often logs this habit, or null if too few data points.
 function typicalHourFromTimestamps(timestamps: string[]): number | null {
@@ -95,7 +79,7 @@ export async function getReminderSchedule(): Promise<ScheduledReminder[]> {
     const times = (h.reminder_times ?? []) as string[];
     const days = (h.reminder_days ?? [0, 1, 2, 3, 4, 5, 6]) as number[];
     const hc = byHabit.get(h.id as string) ?? [];
-    const streak = habitStreak(hc.map((c) => c.completed_on));
+    const streak = streakFromDates(hc.map((c) => c.completed_on));
     const typicalHour = typicalHourFromTimestamps(hc.map((c) => c.created_at));
 
     for (const time of times) {

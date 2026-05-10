@@ -5,7 +5,7 @@ import { requestReviewManually } from "@/lib/store-review";
 const TERMS_URL = process.env.EXPO_PUBLIC_TERMS_URL;
 const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL;
 const APP_VERSION = Constants.expoConfig?.version ?? "—";
-import { Alert, Linking, View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { Alert, Linking, Platform, View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -57,6 +57,11 @@ export default function SettingsScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   async function handleSignOut() {
+    if (Platform.OS === "web") {
+      // Alert.alert buttons don't fire on web — use browser confirm instead.
+      if (window.confirm("Sign out? You can sign back in any time.")) signOut();
+      return;
+    }
     Alert.alert("Sign out?", "You can sign back in any time.", [
       { text: "Cancel", style: "cancel" },
       { text: "Sign out", style: "destructive", onPress: () => signOut() },

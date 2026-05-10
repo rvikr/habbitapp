@@ -32,7 +32,7 @@ export default function ResetPasswordScreen() {
       return;
     }
     setMessage({ text: "Password updated.", type: "success" });
-    router.replace("/");
+    setTimeout(() => router.replace("/"), 800);
   }
 
   return (

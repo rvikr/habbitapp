@@ -113,11 +113,11 @@ export async function updateAvatar(style: AvatarStyle, seed: string): Promise<Ac
   const { error } = await supabase.auth.updateUser({ data: { avatar_style: style, avatar_seed: seed } });
   if (error) return mutationResult(error);
 
-  await supabase
+  const { error: profileError } = await supabase
     .from("profiles")
     .update({ avatar_style: style, avatar_seed: seed, updated_at: new Date().toISOString() })
     .eq("user_id", user.id);
-  return { ok: true };
+  return mutationResult(profileError);
 }
 
 export async function updateHabitReminders(habitId: string, data: { enabled: boolean; times: string[]; days: number[] }): Promise<ActionResult> {
@@ -225,10 +225,17 @@ export async function updatePassword(newPassword: string) {
 export async function requestAccountDeletion(reason?: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return notSignedIn();
-  const { error } = await supabase.from("account_deletion_requests").insert({
-    user_id: user.id,
-    email: user.email ?? null,
-    reason: reason?.trim() || null,
-  });
-  return mutationResult(error);
+  try {
+    const { data, error } = await supabase.functions.invoke<{ ok?: boolean; error?: string }>(
+      "delete-account",
+      { body: { reason: reason?.trim() || null } },
+    );
+    if (error) return { ok: false, error: error.message };
+    if (!data?.ok) return { ok: false, error: data?.error ?? "Could not delete account." };
+    await supabase.auth.signOut({ scope: "local" });
+    resetAnalytics();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Network error. Check your connection and try again." };
+  }
 }
