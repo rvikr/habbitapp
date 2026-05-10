@@ -52,7 +52,7 @@ export default function LoginScreen() {
         const { data, error: e } = await signUp(email, password);
         if (e) {
           setError(e.message);
-        } else if (data?.user && data.user.identities?.length === 0) {
+        } else if (!data?.user || data.user.identities?.length === 0) {
           setError("An account with this email already exists. Try signing in instead.");
         } else {
           setMessage("Check your email to confirm your account, then sign in.");
@@ -212,7 +212,6 @@ export default function LoginScreen() {
 function ForgotPasswordModal({ visible, onDismiss, initialEmail }: { visible: boolean; onDismiss: () => void; initialEmail: string }) {
   const [email, setEmail] = useState(initialEmail);
   const [sending, setSending] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [feedback, setFeedback] = useState<{ text: string; type: "error" | "success" } | null>(null);
 
   async function send() {

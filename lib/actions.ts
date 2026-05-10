@@ -21,28 +21,44 @@ function mutationResult(error: { message?: string } | null | undefined): ActionR
   return error ? { ok: false, error: error.message ?? "Something went wrong." } : { ok: true };
 }
 
+function networkError(): Error {
+  return new Error("Network error. Check your connection and try again.");
+}
+
 export async function signIn(email: string, password: string) {
   if (!isSupabaseConfigured()) return { error: configurationError() };
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  return { error };
+  try {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
+  } catch {
+    return { error: networkError() };
+  }
 }
 
 export async function signUp(email: string, password: string) {
   if (!isSupabaseConfigured()) return { data: null, error: configurationError() };
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: authCallbackUrl() },
-  });
-  return { data, error };
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: authCallbackUrl() },
+    });
+    return { data, error };
+  } catch {
+    return { data: null, error: networkError() };
+  }
 }
 
 export async function resetPassword(email: string) {
   if (!isSupabaseConfigured()) return { error: configurationError() };
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: authCallbackUrl(),
-  });
-  return { error };
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: authCallbackUrl(),
+    });
+    return { error };
+  } catch {
+    return { error: networkError() };
+  }
 }
 
 export async function signOut() {
@@ -198,8 +214,12 @@ export async function deleteHabit(habitId: string): Promise<ActionResult> {
 
 export async function updatePassword(newPassword: string) {
   if (!isSupabaseConfigured()) return { error: configurationError() };
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  return { error };
+  try {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    return { error };
+  } catch {
+    return { error: networkError() };
+  }
 }
 
 export async function requestAccountDeletion(reason?: string): Promise<ActionResult> {
