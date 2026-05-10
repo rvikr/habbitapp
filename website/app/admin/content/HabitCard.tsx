@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { toggleSuggestedHabit, deleteSuggestedHabit, updateSuggestedHabit } from "./actions";
+import { toggleSuggestedHabit, deleteSuggestedHabit, updateSuggestedHabit, createSuggestedHabit } from "./actions";
 
 interface SuggestedHabit {
   id: string;

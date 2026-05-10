@@ -1,4 +1,5 @@
-import { View, Text, FlatList } from "react-native";
+import { View, Text, FlatList, TouchableOpacity } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "@/components/theme-provider";
 import Icon from "./icon";
 import type { ComputedBadge } from "@/lib/badges";
@@ -20,9 +21,9 @@ const TONE_FG_DARK: Record<string, string> = {
   red: "#fca5a5", indigo: "#a5b4fc", orange: "#fdba74",
 };
 
-type Props = { badges: ComputedBadge[] };
+type Props = { badges: ComputedBadge[]; onShare?: (badge: ComputedBadge) => void };
 
-export default function BadgeGrid({ badges }: Props) {
+export default function BadgeGrid({ badges, onShare }: Props) {
   const { colorScheme } = useTheme();
   const dark = colorScheme === "dark";
 
@@ -46,8 +47,19 @@ export default function BadgeGrid({ badges }: Props) {
             className="flex-1 rounded-xl p-md"
             style={{ backgroundColor: bg, opacity: item.earned ? 1 : 0.55 }}
           >
-            <View className="w-10 h-10 rounded-full items-center justify-center mb-sm" style={{ backgroundColor: fg + "20" }}>
-              <Icon name={item.icon} size={20} color={fg} />
+            <View className="flex-row items-start justify-between mb-sm">
+              <View className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: fg + "20" }}>
+                <Icon name={item.icon} size={20} color={fg} />
+              </View>
+              {item.earned && onShare && (
+                <TouchableOpacity
+                  onPress={() => onShare(item)}
+                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                  className="p-xs"
+                >
+                  <MaterialCommunityIcons name="share-variant" size={16} color={fg + "cc"} />
+                </TouchableOpacity>
+              )}
             </View>
             <Text className="text-label-lg font-semibold mb-xs" style={{ color: fg }}>{item.name}</Text>
             <Text className="text-label-sm" style={{ color: fg + "aa" }}>{item.earned ? item.description : item.hintText}</Text>

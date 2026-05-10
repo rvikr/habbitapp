@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStats } from "@/lib/habits";
+import ShareButton from "@/components/share-button";
+
+const APP_URL = "https://laganapp.com";
 
 export const metadata: Metadata = { title: "Leaderboard — Lagan" };
 export const dynamic = "force-dynamic";
@@ -358,6 +361,14 @@ export default async function LeaderboardPage({
               <span className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
                 Top {topPct}%
               </span>
+            )}
+            {userRank && (
+              <ShareButton
+                shareText={`I'm ranked #${userRank} globally on Lagan! 🏅\n${userXP.toLocaleString()} XP · Level ${userLevel} · ${userStreak} day streak`}
+                shareUrl={`${APP_URL}/leaderboard`}
+                label="Share rank"
+                className="text-white/80 hover:text-white"
+              />
             )}
             <div className="pt-1 space-y-1.5">
               <div className="flex justify-between text-xs">

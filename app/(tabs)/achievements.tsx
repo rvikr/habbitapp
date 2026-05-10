@@ -5,6 +5,7 @@ import { useFocusEffect } from "expo-router";
 import { getStats, getMilestones } from "@/lib/habits";
 import { BADGE_DEFS, type ComputedBadge } from "@/lib/badges";
 import BadgeGrid from "@/components/badge-grid";
+import { shareBadge } from "@/lib/share";
 import type { Milestone } from "@/types/db";
 
 type StatsData = Awaited<ReturnType<typeof getStats>>;
@@ -37,6 +38,10 @@ export default function AchievementsScreen() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onRefresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
+
+  const handleShareBadge = useCallback((badge: ComputedBadge) => {
+    shareBadge(badge.name, badge.description);
+  }, []);
 
   const xpPct = stats ? (stats.xp / stats.xpForNext) * 100 : 0;
 
@@ -79,7 +84,7 @@ export default function AchievementsScreen() {
         {/* Badges */}
         <View className="px-margin-mobile mb-lg">
           <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mb-md">BADGES</Text>
-          <BadgeGrid badges={badges} />
+          <BadgeGrid badges={badges} onShare={handleShareBadge} />
         </View>
 
         {/* Milestones */}

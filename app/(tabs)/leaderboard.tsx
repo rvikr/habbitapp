@@ -5,6 +5,7 @@ import { useFocusEffect } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getLeaderboard, getMyProfile, setDisplayName, getMyRank, type LeaderboardEntry, type Profile } from "@/lib/leaderboard";
 import { avatarUrl, type AvatarStyle } from "@/lib/avatar";
+import { shareRank } from "@/lib/share";
 
 export default function LeaderboardScreen() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -95,6 +96,16 @@ export default function LeaderboardScreen() {
               <Text className="text-body-md text-on-primary font-semibold">Your rank</Text>
               <Text className="text-label-sm text-on-primary opacity-80">Keep going to climb!</Text>
             </View>
+            <TouchableOpacity
+              onPress={() => {
+                const me = entries.find((e) => profile?.user_id === e.user_id);
+                shareRank(myRank, me?.total_xp ?? 0, me?.level ?? 1, 0);
+              }}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+              className="p-xs"
+            >
+              <MaterialCommunityIcons name="share-variant" size={20} color="rgba(255,255,255,0.85)" />
+            </TouchableOpacity>
           </View>
         )}
 

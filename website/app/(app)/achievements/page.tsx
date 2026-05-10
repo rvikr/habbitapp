@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { getStats } from "@/lib/habits";
 import { computeBadges } from "@/lib/badges";
+import ShareButton from "@/components/share-button";
 import type { Badge } from "@/types/db";
+
+const APP_URL = "https://laganapp.com";
 
 export const metadata: Metadata = { title: "Achievements" };
 export const dynamic = "force-dynamic";
@@ -41,9 +44,16 @@ function BadgeCard({ badge }: { badge: Badge }) {
         <p className="text-xs text-on-surface-variant mt-0.5 leading-snug">{badge.description}</p>
       </div>
       {badge.earned && (
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tone.tag}`}>
-          Earned
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${tone.tag}`}>
+            Earned
+          </span>
+          <ShareButton
+            shareText={`I just earned the "${badge.name}" badge on Lagan! 🏆\n${badge.description}`}
+            shareUrl={`${APP_URL}/achievements`}
+            label="Share"
+          />
+        </div>
       )}
     </div>
   );
