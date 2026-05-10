@@ -1,6 +1,6 @@
 import { Share } from "react-native";
 
-const APP_URL = "https://laganapp.com";
+const APP_URL = "https://lagan.health";
 
 export async function shareBadge(name: string, description: string) {
   try {

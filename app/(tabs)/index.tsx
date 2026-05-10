@@ -3,8 +3,10 @@ import { Alert, View, Text, ScrollView, TouchableOpacity, RefreshControl } from 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { getHabitsForToday } from "@/lib/habits";
+import { getHabitsForToday, getInsights } from "@/lib/habits";
 import { toggleHabit } from "@/lib/actions";
+import InsightsStrip from "@/components/insights-strip";
+import type { Insights } from "@/lib/habits";
 import { useCelebrate } from "@/components/celebration";
 import { useTheme } from "@/components/theme-provider";
 import { recordCompletionAndMaybeReview } from "@/lib/store-review";
@@ -16,6 +18,8 @@ type DashboardData = {
   habits: Habit[];
   completedToday: Set<string>;
   profile: { displayName: string; email: string | null };
+  insights: Insights;
+  leaderboardOptedIn: boolean;
 };
 
 export default function DashboardScreen() {
@@ -28,8 +32,8 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const result = await getHabitsForToday();
-    setData({ ...result, completedToday: result.completedToday });
+    const [result, insights] = await Promise.all([getHabitsForToday(), getInsights()]);
+    setData({ ...result, completedToday: result.completedToday, insights });
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -97,6 +101,21 @@ export default function DashboardScreen() {
           </Text>
         </View>
 
+        {/* Leaderboard opt-in banner */}
+        {data && !data.leaderboardOptedIn && (
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/leaderboard")}
+            className="mx-margin-mobile mb-sm bg-primary-fixed dark:bg-d-surface-container rounded-xl p-md flex-row items-center gap-md"
+          >
+            <MaterialCommunityIcons name="trophy-outline" size={22} color={primary} />
+            <View className="flex-1">
+              <Text className="text-body-sm text-on-background dark:text-d-on-background font-semibold">Join the global leaderboard</Text>
+              <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">Set a display name to rank with others</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={primary} />
+          </TouchableOpacity>
+        )}
+
         {/* Habits list */}
         <View className="px-margin-mobile gap-sm">
           <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mb-xs">TODAY'S HABITS</Text>
@@ -123,6 +142,13 @@ export default function DashboardScreen() {
             ))
           )}
         </View>
+
+        {/* Weekly insights */}
+        {data?.insights && (
+          <View className="mt-lg">
+            <InsightsStrip insights={data.insights} />
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

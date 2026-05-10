@@ -1,11 +1,47 @@
 import type { Metadata } from "next";
-import { getHabitsForToday, getWeeklyCompletions } from "@/lib/habits";
+import { getHabitsForToday, getWeeklyCompletions, getInsights } from "@/lib/habits";
+import type { Insights } from "@/lib/habits";
 import HabitList from "@/components/HabitList";
 
 export const metadata: Metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const INSIGHT_CONFIGS: {
+  key: keyof Insights;
+  icon: string;
+  color: string;
+  bg: string;
+  format: (v: Insights[keyof Insights]) => string;
+}[] = [
+  {
+    key: "mostProductiveDay",
+    icon: "leaderboard",
+    color: "text-primary",
+    bg: "bg-primary-fixed/60",
+    format: (v) => `Most productive on ${v}s`,
+  },
+  {
+    key: "consistencyChangePct",
+    icon: "trending_up",
+    color: "text-secondary",
+    bg: "bg-secondary-container/50",
+    format: (v) => {
+      const n = v as number;
+      return n >= 0
+        ? `Consistency up ${n}% this month`
+        : `Consistency down ${Math.abs(n)}% this month`;
+    },
+  },
+  {
+    key: "peakTimeLabel",
+    icon: "schedule",
+    color: "text-tertiary-container",
+    bg: "bg-tertiary-fixed/40",
+    format: (v) => `Most active ${v}`,
+  },
+];
 
 function greeting() {
   const h = new Date().getHours();
@@ -15,8 +51,11 @@ function greeting() {
 }
 
 export default async function DashboardPage() {
-  const { habits, completedToday, displayName } = await getHabitsForToday();
-  const weeklyCompletions = await getWeeklyCompletions();
+  const [{ habits, completedToday, displayName }, weeklyCompletions, insights] = await Promise.all([
+    getHabitsForToday(),
+    getWeeklyCompletions(),
+    getInsights(),
+  ]);
 
   const total = habits.length;
   const done = completedToday.size;
@@ -155,6 +194,39 @@ export default async function DashboardPage() {
             Consistency beats intensity. Even completing one habit today keeps your streak alive.
           </p>
         </div>
+
+        {/* Weekly insights */}
+        {INSIGHT_CONFIGS.some((c) => insights[c.key] !== null) && (
+          <div className="bg-white rounded-3xl p-5 shadow-card border border-outline-variant/15 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>insights</span>
+              <h3 className="font-bold text-on-background">Your Insights</h3>
+            </div>
+            <div className="space-y-2">
+              {INSIGHT_CONFIGS.map(({ key, icon, color, bg, format }) => {
+                const value = insights[key];
+                if (value === null) return null;
+                const isDown = key === "consistencyChangePct" && (value as number) < 0;
+                const iconName = key === "consistencyChangePct" && isDown ? "trending_down" : icon;
+                const colorClass = key === "consistencyChangePct" && isDown ? "text-error" : color;
+                const bgClass = key === "consistencyChangePct" && isDown ? "bg-error-container/40" : bg;
+                return (
+                  <div key={key} className={`flex items-start gap-2.5 rounded-2xl p-3 overflow-hidden ${bgClass}`}>
+                    <span
+                      className={`material-symbols-outlined text-base flex-shrink-0 mt-0.5 ${colorClass}`}
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      {iconName}
+                    </span>
+                    <p className={`text-xs font-semibold leading-snug min-w-0 break-words ${colorClass}`}>
+                      {format(value)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Today&apos;s date */}
         <div className="bg-gradient-to-br from-secondary/10 to-secondary-container/20 rounded-3xl p-5 border border-secondary-container/30 space-y-1">

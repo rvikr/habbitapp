@@ -7,6 +7,8 @@ import { getHabitsForToday } from "@/lib/habits";
 import { updateHabitReminders } from "@/lib/actions";
 import { requestPermission, getPermissionStatus } from "@/lib/notifications";
 import { syncScheduledReminders } from "@/lib/reminder-sync";
+import { getReminderSchedule } from "@/lib/reminders";
+import { buildSmartBody } from "@/lib/reminder-sync";
 import type { Habit } from "@/types/db";
 
 const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -15,12 +17,23 @@ export default function RemindersScreen() {
   const router = useRouter();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [permission, setPermission] = useState<"granted" | "denied" | "undetermined">("undetermined");
+  const [previewMessages, setPreviewMessages] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const { habits: h } = await getHabitsForToday();
     setHabits(h);
     const status = await getPermissionStatus();
     setPermission(status);
+
+    // Load enriched schedule to show contextual preview messages.
+    const schedule = await getReminderSchedule();
+    const previews: Record<string, string> = {};
+    for (const entry of schedule) {
+      if (!(entry.habitId in previews)) {
+        previews[entry.habitId] = buildSmartBody(entry.habitName, entry.context);
+      }
+    }
+    setPreviewMessages(previews);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -104,6 +117,14 @@ export default function RemindersScreen() {
                   {habit.reminder_days.map((d) => (
                     <Text key={d} className="text-label-sm bg-primary-fixed text-primary px-xs py-xs rounded">{DAY_LABELS[d]}</Text>
                   ))}
+                </View>
+              )}
+              {habit.reminders_enabled && previewMessages[habit.id] && (
+                <View className="mt-sm flex-row items-center gap-xs bg-primary-fixed/40 rounded-lg px-sm py-xs">
+                  <MaterialCommunityIcons name="message-text-outline" size={14} color="#451ebb" />
+                  <Text className="text-label-sm text-primary flex-1" numberOfLines={2}>
+                    {previewMessages[habit.id]}
+                  </Text>
                 </View>
               )}
             </View>

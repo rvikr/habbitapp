@@ -55,8 +55,7 @@ export default function SettingsForm({ userId, displayName, email }: Props) {
 
     const { error: err } = await supabase
       .from("profiles")
-      .update({ display_name: name.trim() })
-      .eq("user_id", userId);
+      .upsert({ user_id: userId, display_name: name.trim() }, { onConflict: "user_id" });
 
     setSaving(false);
     if (err) {

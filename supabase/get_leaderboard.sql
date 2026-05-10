@@ -60,17 +60,12 @@ begin
   select
     row_number() over (order by ux.xp desc)::bigint as rank,
     ux.user_id,
-    coalesce(
-      p.display_name,
-      split_part(au.email, '@', 1),
-      'Anonymous'
-    )::text as display_name,
+    p.display_name,
     ux.xp,
     coalesce(us.streak, 0)::int as streak,
     (ux.user_id = v_user_id) as is_current_user
   from user_xp ux
-  left join profiles    p  on p.user_id  = ux.user_id
-  left join auth.users  au on au.id      = ux.user_id
+  join profiles    p  on p.user_id  = ux.user_id and p.display_name is not null
   left join user_streak us on us.user_id = ux.user_id
   order by ux.xp desc
   limit 50;

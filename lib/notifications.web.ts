@@ -14,6 +14,7 @@ export async function scheduleHabitReminder(
   habitName: string,
   time: string,
   days: number[],
+  body?: string,
 ): Promise<string[]> {
   return [];
 }

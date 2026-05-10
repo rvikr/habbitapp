@@ -25,6 +25,7 @@ export async function scheduleHabitReminder(
   habitName: string,
   time: string,
   days: number[],
+  body?: string,
 ): Promise<string[]> {
   const [hour, minute] = time.split(":").map(Number);
   const ids: string[] = [];
@@ -32,8 +33,8 @@ export async function scheduleHabitReminder(
   for (const day of days) {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: "Habit Reminder",
-        body: `Time to: ${habitName}`,
+        title: habitName,
+        body: body ?? habitName,
         data: { habitId },
       },
       trigger: {

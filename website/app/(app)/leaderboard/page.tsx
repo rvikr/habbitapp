@@ -3,8 +3,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getStats } from "@/lib/habits";
 import ShareButton from "@/components/share-button";
+import { redirect } from "next/navigation";
 
-const APP_URL = "https://laganapp.com";
+const APP_URL = "https://lagan.health";
 
 export const metadata: Metadata = { title: "Leaderboard — Lagan" };
 export const dynamic = "force-dynamic";
@@ -83,10 +84,19 @@ export default async function LeaderboardPage({
   const period: Period =
     raw === "week" ? "week" : raw === "month" ? "month" : "all";
 
-  const [stats, { entries: board, debugError }] = await Promise.all([
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const [stats, { entries: rawEntries, debugError }, { data: profile }] = await Promise.all([
     getStats(),
     getLeaderboard(period),
+    supabase.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle(),
   ]);
+
+  // Only show users who have opted in with a display name
+  const board = rawEntries.filter((e) => e.display_name);
+  const hasDisplayName = !!(profile?.display_name);
 
   const userXP = (stats?.totalCompletions ?? 0) * XP_PER_COMPLETION;
   const userStreak = stats?.streak ?? 0;
@@ -149,6 +159,32 @@ export default async function LeaderboardPage({
             </Link>
           ))}
         </div>
+
+        {/* Opt-in banner */}
+        {!hasDisplayName && (
+          <Link
+            href="/settings"
+            className="flex items-center gap-4 bg-primary/8 border border-primary/20 rounded-2xl px-5 py-4 hover:bg-primary/12 transition-colors group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <span
+                className="material-symbols-outlined text-primary text-xl"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                emoji_events
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-on-background text-sm">Join the global leaderboard</p>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Set a display name in Settings to appear on the board and compete with others.
+              </p>
+            </div>
+            <span className="material-symbols-outlined text-primary text-xl group-hover:translate-x-0.5 transition-transform">
+              arrow_forward
+            </span>
+          </Link>
+        )}
 
         {board.length > 0 ? (
           <div className="space-y-6">

@@ -4,7 +4,7 @@ import { computeBadges } from "@/lib/badges";
 import ShareButton from "@/components/share-button";
 import type { Badge } from "@/types/db";
 
-const APP_URL = "https://laganapp.com";
+const APP_URL = "https://lagan.health";
 
 export const metadata: Metadata = { title: "Achievements" };
 export const dynamic = "force-dynamic";
