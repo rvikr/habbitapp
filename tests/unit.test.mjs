@@ -9,6 +9,11 @@ import { isValidReminderTime, parseOptionalPositiveNumber, validateFeedback } fr
 import { streakFromDates } from "../lib/streak.ts";
 import { buildCompletionValuePayload } from "../lib/completions.ts";
 import {
+  healthConnectTodayRange,
+  normalizeHealthConnectStepAggregate,
+  normalizeStepCount,
+} from "../lib/steps-shared.ts";
+import {
   inferHabitIntelligence,
   mergeHabitSettings,
   progressForHabit,
@@ -211,6 +216,28 @@ test("completion value payload stores absolute values", () => {
       note: "synced",
     },
   );
+});
+
+test("health connect step range starts at local midnight", () => {
+  const range = healthConnectTodayRange(new Date(2026, 4, 14, 15, 45, 12));
+  const start = new Date(range.startTime);
+  const end = new Date(range.endTime);
+  assert.equal(range.operator, "between");
+  assert.equal(start.getFullYear(), 2026);
+  assert.equal(start.getMonth(), 4);
+  assert.equal(start.getDate(), 14);
+  assert.equal(start.getHours(), 0);
+  assert.equal(start.getMinutes(), 0);
+  assert.equal(end.getHours(), 15);
+  assert.equal(end.getMinutes(), 45);
+});
+
+test("health connect step aggregate normalization returns integer totals", () => {
+  assert.equal(normalizeStepCount(1234.9), 1234);
+  assert.equal(normalizeStepCount(-20), 0);
+  assert.equal(normalizeHealthConnectStepAggregate({ COUNT_TOTAL: 6789.8, dataOrigins: [] }), 6789);
+  assert.equal(normalizeHealthConnectStepAggregate({ dataOrigins: [] }), 0);
+  assert.equal(normalizeHealthConnectStepAggregate(null), null);
 });
 
 test("duplicate scoring and merging combine compatible water habits", () => {

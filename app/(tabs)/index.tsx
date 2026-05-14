@@ -15,7 +15,7 @@ import type { Habit } from "@/types/db";
 import { progressForHabit, type HabitProgress } from "@/lib/habit-intelligence";
 import {
   getStepPermissionStatus,
-  getTodayStepCount,
+  getTodayStepSnapshot,
   isStepTrackingAvailable,
   requestStepPermission,
   watchStepCount,
@@ -34,7 +34,17 @@ type DashboardData = {
 
 const STEP_SYNC_INTERVAL_MS = 30_000;
 
-type StepTrackingStatus = "idle" | "checking" | "needsPermission" | "denied" | "unsupported" | "tracking" | "syncing" | "error";
+type StepTrackingStatus =
+  | "idle"
+  | "checking"
+  | "needsPermission"
+  | "denied"
+  | "unsupported"
+  | "providerUpdateRequired"
+  | "tracking"
+  | "syncing"
+  | "synced"
+  | "error";
 type StepTrackingState = {
   status: StepTrackingStatus;
   lastSyncedAt: number | null;
@@ -148,13 +158,39 @@ export default function DashboardScreen() {
 
     if (permission !== "granted") {
       stopStepWatcher();
-      setStepTracking({ status: permission === "denied" ? "denied" : "needsPermission", lastSyncedAt: null });
+      setStepTracking({
+        status:
+          permission === "providerUpdateRequired"
+            ? "providerUpdateRequired"
+            : permission === "unavailable"
+              ? "unsupported"
+              : permission === "denied"
+                ? "denied"
+                : "needsPermission",
+        lastSyncedAt: null,
+      });
       return false;
     }
 
     const savedValue = dataRef.current?.todayProgress.get(habit.id)?.current ?? 0;
-    const seededValue = await getTodayStepCount();
-    const baseline = Math.max(savedValue, seededValue ?? 0);
+    const snapshot = await getTodayStepSnapshot();
+    if (snapshot.status === "providerUpdateRequired") {
+      stopStepWatcher();
+      setStepTracking({ status: "providerUpdateRequired", lastSyncedAt: null });
+      return false;
+    }
+    if (snapshot.status === "unavailable" && snapshot.source !== "pedometer") {
+      stopStepWatcher();
+      setStepTracking({ status: "unsupported", lastSyncedAt: null });
+      return false;
+    }
+    if (snapshot.status !== "granted") {
+      stopStepWatcher();
+      setStepTracking({ status: snapshot.status === "denied" ? "denied" : "needsPermission", lastSyncedAt: null });
+      return false;
+    }
+
+    const baseline = Math.max(savedValue, snapshot.steps ?? 0);
     stepBaseRef.current = baseline;
     lastStepValueRef.current = baseline;
     stepTrackingHabitIdRef.current = habit.id;
@@ -162,6 +198,12 @@ export default function DashboardScreen() {
     if (baseline > 0) {
       updateLocalStepProgress(habit, baseline);
       await persistStepCount(habit, baseline, forcePersist);
+    }
+
+    if (!snapshot.canWatch) {
+      stopStepWatcher();
+      setStepTracking({ status: "synced", lastSyncedAt: Date.now() });
+      return true;
     }
 
     stepSubscriptionRef.current?.remove();
@@ -203,7 +245,7 @@ export default function DashboardScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await load();
-    if (stepHabit && stepTracking.status === "tracking") {
+    if (stepHabit && (stepTracking.status === "tracking" || stepTracking.status === "synced")) {
       await syncStepHabit(stepHabit, false, true);
     }
     setRefreshing(false);
@@ -316,7 +358,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {stepHabit && stepTracking.status !== "idle" && stepTracking.status !== "tracking" && (
+        {stepHabit && !["idle", "tracking", "synced"].includes(stepTracking.status) && (
           <StepTrackingCard
             state={stepTracking}
             primary={primary}
@@ -375,19 +417,23 @@ function StepTrackingCard({ state, primary, onEnable }: StepTrackingCardProps) {
   const title =
     state.status === "unsupported"
       ? "Step tracking is unavailable"
-      : state.status === "denied"
-        ? "Step tracking permission is off"
-        : state.status === "error"
-          ? "Step tracking needs attention"
-          : "Enable step tracking";
+      : state.status === "providerUpdateRequired"
+        ? "Health Connect needs an update"
+        : state.status === "denied"
+          ? "Step tracking permission is off"
+          : state.status === "error"
+            ? "Step tracking needs attention"
+            : "Enable step tracking";
   const body =
     state.status === "unsupported"
       ? "This device does not expose a pedometer here. Manual step logging still works."
-      : state.status === "denied"
-        ? "Enable motion access in Settings, or log steps manually from the habit screen."
-        : state.status === "error"
-          ? state.error ?? "Could not sync steps. Try again."
-          : "Use your phone's motion sensor to update your Walk habit while the app is open.";
+      : state.status === "providerUpdateRequired"
+        ? "Update or install Health Connect, then retry. Manual step logging still works."
+        : state.status === "denied"
+          ? "Enable Health Connect steps access or motion access, or log steps manually from the habit screen."
+          : state.status === "error"
+            ? state.error ?? "Could not sync steps. Try again."
+            : "Use Health Connect to update your Walk habit from today's Android step total.";
   const action = busy ? "Checking..." : state.status === "denied" ? "Retry" : "Enable";
 
   return (
