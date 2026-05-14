@@ -37,7 +37,7 @@ export default function SecurityScreen() {
       <View className="px-margin-mobile gap-sm mt-md">
         <TextInput
           className="bg-surface-container dark:bg-d-surface-container text-on-surface dark:text-d-on-surface rounded-xl px-md py-sm text-body-md"
-          placeholder="New password (12+ chars, mixed case + number)"
+          placeholder="New password (8+ chars, mixed case + number)"
           placeholderTextColor="#797586"
           value={password}
           onChangeText={setPassword}

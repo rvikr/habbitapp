@@ -1,4 +1,25 @@
 export type ColorVariant = "primary" | "secondary" | "tertiary" | "neutral";
+export type HabitType =
+  | "water_intake"
+  | "walk"
+  | "sleep"
+  | "read"
+  | "run"
+  | "cycling"
+  | "meditate"
+  | "workout"
+  | "journal"
+  | "vitamins"
+  | "healthy_eating"
+  | "cold_shower"
+  | "no_social_media"
+  | "coding"
+  | "stretch"
+  | "cooking"
+  | "custom";
+export type MetricType = "volume_ml" | "steps" | "hours" | "pages" | "minutes" | "distance_km" | "boolean";
+export type VisualType = "water_bottle" | "step_path" | "sleep_moon" | "reading_book" | "progress_ring";
+export type ReminderStrategy = "manual" | "interval" | "conditional_interval";
 
 export type Habit = {
   id: string;
@@ -13,6 +34,12 @@ export type Habit = {
   reminder_times: string[] | null;
   reminder_days: number[] | null;
   reminders_enabled: boolean | null;
+  habit_type: HabitType | null;
+  metric_type: MetricType | null;
+  visual_type: VisualType | null;
+  reminder_strategy: ReminderStrategy | null;
+  reminder_interval_minutes: number | null;
+  default_log_value: number | null;
   created_at: string;
   archived_at: string | null;
 };

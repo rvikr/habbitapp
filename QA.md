@@ -12,7 +12,7 @@ Mark each item: ✅ pass · ❌ fail · ⏭️ skip · `<note>`
 | # | Test | iOS | Android | Web |
 |---|---|---|---|---|
 | 1.1 | Open app → see login screen (no session yet) | | | |
-| 1.2 | Sign up with new email + 12+ char password (uppercase, lowercase, number) | | | |
+| 1.2 | Sign up with new email + 8+ char password (uppercase, lowercase, number) | | | |
 | 1.3 | Sign up with weak password — shows validation error | | | |
 | 1.4 | Receive confirmation email and link works | | | |
 | 1.5 | Sign in with confirmed account → land on Dashboard | | | |
@@ -67,7 +67,7 @@ Mark each item: ✅ pass · ❌ fail · ⏭️ skip · `<note>`
 | 4.5 | Reminders screen shows habit list with toggle | | | |
 | 4.6 | Toggle reminder on → permission prompt appears | | | |
 | 4.7 | Allow notification → toggle stays on | | | |
-| 4.8 | Security: weak password rejected (< 12 chars / no number / etc.) | | | |
+| 4.8 | Security: weak password rejected (< 8 chars / no number / etc.) | | | |
 | 4.9 | Security: matching strong password updates successfully | | | |
 | 4.10 | Sign out → returns to login screen | | | |
 | 4.11 | Privacy & Data: analytics opt-out persists after restart | | | |

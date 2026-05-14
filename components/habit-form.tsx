@@ -5,6 +5,14 @@ import HabitCatalogPicker from "./habit-catalog-picker";
 import type { Habit } from "@/types/db";
 import type { CatalogEntry } from "@/lib/habit-catalog";
 import { isValidReminderTime, parseOptionalPositiveNumber } from "@/lib/validation";
+import {
+  inferHabitIntelligence,
+  unitOptionsForHabit,
+  type HabitType,
+  type MetricType,
+  type ReminderStrategy,
+  type VisualType,
+} from "@/lib/habit-intelligence";
 
 const ICONS = ["water_drop", "directions_run", "directions_walk", "menu_book", "self_improvement", "edit_note", "fitness_center", "bedtime", "medication", "restaurant", "shower", "code", "directions_bike", "favorite", "eco", "spa"];
 const COLORS: Array<{ id: "primary" | "secondary" | "tertiary" | "neutral"; label: string; hex: string }> = [
@@ -15,6 +23,15 @@ const COLORS: Array<{ id: "primary" | "secondary" | "tertiary" | "neutral"; labe
 ];
 const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const TIME_PRESETS = ["07:00", "08:00", "12:00", "16:00", "20:00", "22:00"];
+const METRIC_LABELS: Record<MetricType, string> = {
+  volume_ml: "Volume",
+  steps: "Steps",
+  hours: "Hours",
+  pages: "Pages",
+  minutes: "Minutes",
+  distance_km: "Distance",
+  boolean: "Done / not done",
+};
 
 type ColorId = "primary" | "secondary" | "tertiary" | "neutral";
 type FormData = {
@@ -27,6 +44,13 @@ type FormData = {
   remindersEnabled: boolean;
   reminderTimes: string[];
   reminderDays: number[];
+  habitType: HabitType;
+  metricType: MetricType;
+  visualType: VisualType;
+  reminderStrategy: ReminderStrategy;
+  reminderIntervalMinutes: number | null;
+  defaultLogValue: number | null;
+  mergeSimilar: boolean;
 };
 
 type Props = {
@@ -46,6 +70,14 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
   const [remindersEnabled, setRemindersEnabled] = useState(initial?.reminders_enabled ?? false);
   const [reminderTimes, setReminderTimes] = useState<string[]>(initial?.reminder_times ?? []);
   const [reminderDays, setReminderDays] = useState<number[]>(initial?.reminder_days ?? [0, 1, 2, 3, 4, 5, 6]);
+  const [habitType, setHabitType] = useState<HabitType>(initial?.habit_type ?? "custom");
+  const [metricType, setMetricType] = useState<MetricType>(initial?.metric_type ?? "boolean");
+  const [visualType, setVisualType] = useState<VisualType>(initial?.visual_type ?? "progress_ring");
+  const [reminderStrategy, setReminderStrategy] = useState<ReminderStrategy>(initial?.reminder_strategy ?? "manual");
+  const [reminderIntervalMinutes, setReminderIntervalMinutes] = useState<number | null>(initial?.reminder_interval_minutes ?? null);
+  const [defaultLogValue, setDefaultLogValue] = useState<number | null>(initial?.default_log_value ?? null);
+  const [mergeSimilar, setMergeSimilar] = useState(true);
+  const [showMetricOptions, setShowMetricOptions] = useState(false);
   const [customTime, setCustomTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -57,10 +89,14 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
     setColor(entry.color as ColorId);
     setUnit(entry.unit);
     setTarget(entry.target?.toString() ?? "");
-    if (entry.defaultTimes.length > 0) {
-      setRemindersEnabled(true);
-      setReminderTimes(entry.defaultTimes);
-    }
+    setHabitType(entry.habitType);
+    setMetricType(entry.metricType);
+    setVisualType(entry.visualType);
+    setReminderStrategy(entry.reminderStrategy);
+    setReminderIntervalMinutes(entry.reminderIntervalMinutes);
+    setDefaultLogValue(entry.defaultLogValue);
+    setRemindersEnabled(entry.remindersEnabledByDefault ?? entry.defaultTimes.length > 0);
+    setReminderTimes(entry.defaultTimes);
     setShowCatalog(false);
   }
 
@@ -90,7 +126,19 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
       setFormError(parsedTarget.error);
       return;
     }
-    if (remindersEnabled && reminderTimes.length === 0) {
+    const intelligence = inferHabitIntelligence({
+      name,
+      icon,
+      unit,
+      target: parsedTarget.value,
+      habitType,
+      metricType,
+      visualType,
+      reminderStrategy,
+      reminderIntervalMinutes,
+      defaultLogValue,
+    });
+    if (remindersEnabled && intelligence.reminderStrategy === "manual" && reminderTimes.length === 0) {
       setFormError("Add at least one reminder time or turn reminders off.");
       return;
     }
@@ -114,12 +162,68 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
       remindersEnabled,
       reminderTimes: remindersEnabled ? reminderTimes : [],
       reminderDays: remindersEnabled ? (reminderDays.length > 0 ? reminderDays : [0, 1, 2, 3, 4, 5, 6]) : [0, 1, 2, 3, 4, 5, 6],
+      habitType: intelligence.habitType,
+      metricType: intelligence.metricType,
+      visualType: intelligence.visualType,
+      reminderStrategy: intelligence.reminderStrategy,
+      reminderIntervalMinutes: intelligence.reminderIntervalMinutes,
+      defaultLogValue: intelligence.defaultLogValue,
+      mergeSimilar,
     });
     setLoading(false);
   }
 
   if (showCatalog && !initial) {
     return <HabitCatalogPicker onSelect={applyTemplate} onSkip={() => setShowCatalog(false)} />;
+  }
+
+  const previewTarget = parseOptionalPositiveNumber(target);
+  const metricPreview = inferHabitIntelligence({
+    name,
+    icon,
+    unit,
+    target: previewTarget.ok ? previewTarget.value : null,
+    habitType,
+    metricType,
+    visualType,
+    reminderStrategy,
+    reminderIntervalMinutes,
+    defaultLogValue,
+  });
+  const metricOptions = unitOptionsForHabit(metricPreview.habitType, metricPreview.metricType);
+  const storagePreview =
+    metricPreview.metricType === "volume_ml" && unit.trim().toLowerCase() === "l" && previewTarget.ok && previewTarget.value != null
+      ? `${previewTarget.value} l will be saved as ${metricPreview.target ?? previewTarget.value * 1000} ml.`
+      : metricPreview.metricType === "volume_ml"
+        ? "Water volume is saved in ml."
+        : null;
+
+  function selectMetricOption(option: (typeof metricOptions)[number]) {
+    setUnit(option.unit);
+    setMetricType(option.metricType);
+    if (option.metricType === "volume_ml") {
+      setHabitType("water_intake");
+      setVisualType("water_bottle");
+      setReminderStrategy("interval");
+      setReminderIntervalMinutes(120);
+      setDefaultLogValue(250);
+    } else if (option.metricType === "distance_km") {
+      setVisualType("progress_ring");
+      setDefaultLogValue(option.unit === "m" ? 0.5 : 1);
+    } else if (option.metricType === "steps") {
+      setHabitType("walk");
+      setVisualType("step_path");
+      setReminderStrategy("conditional_interval");
+      setReminderIntervalMinutes(60);
+      setDefaultLogValue(1000);
+    } else if (option.metricType === "hours") {
+      setDefaultLogValue(1);
+    } else if (option.metricType === "minutes") {
+      setDefaultLogValue(10);
+    } else if (option.metricType === "pages") {
+      setDefaultLogValue(10);
+    }
+    setShowMetricOptions(false);
   }
 
   return (
@@ -192,7 +296,7 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
             <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mb-xs">UNIT</Text>
             <TextInput
               className="bg-surface-container dark:bg-d-surface-container text-on-surface dark:text-d-on-surface rounded-xl px-md py-sm text-body-md"
-              placeholder="ml, km, min…"
+              placeholder="ml, km, min..."
               placeholderTextColor="#797586"
               value={unit}
               onChangeText={setUnit}
@@ -211,12 +315,55 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
           </View>
         </View>
 
+        <View className="bg-primary-fixed dark:bg-d-surface-container rounded-xl px-md py-sm">
+          <Text className="text-label-lg text-primary mb-xs">SMART METRIC</Text>
+          <TouchableOpacity
+            className="bg-surface-lowest dark:bg-d-surface-lowest rounded-xl px-md py-sm flex-row items-center justify-between"
+            onPress={() => setShowMetricOptions((prev) => !prev)}
+          >
+            <View>
+              <Text className="text-body-md text-on-background dark:text-d-on-background font-semibold">
+                {METRIC_LABELS[metricPreview.metricType]}
+              </Text>
+              <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">
+                Unit: {unit || metricPreview.unit || "none"}
+              </Text>
+              {storagePreview && (
+                <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">
+                  {storagePreview}
+                </Text>
+              )}
+            </View>
+            <Text className="text-primary text-body-md">{showMetricOptions ? "^" : "v"}</Text>
+          </TouchableOpacity>
+          {showMetricOptions && metricOptions.length > 0 && (
+            <View className="mt-xs bg-surface-lowest dark:bg-d-surface-lowest rounded-xl overflow-hidden">
+              {metricOptions.map((option) => {
+                const active = unit === option.unit && metricType === option.metricType;
+                return (
+                  <TouchableOpacity
+                    key={`${option.metricType}-${option.unit}`}
+                    className="px-md py-sm border-b border-outline-variant dark:border-d-outline-variant"
+                    style={{ backgroundColor: active ? "#e6deff" : "transparent" }}
+                    onPress={() => selectMetricOption(option)}
+                  >
+                    <Text className="text-body-sm text-on-background dark:text-d-on-background font-semibold">{option.label}</Text>
+                    <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">
+                      Store as {option.metricType === "volume_ml" ? "ml" : option.metricType === "distance_km" ? "km" : option.unit}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
         {/* Reminders */}
         <View className="bg-surface-container dark:bg-d-surface-container rounded-xl p-md gap-sm">
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
               <Text className="text-body-md text-on-surface dark:text-d-on-surface font-semibold">Reminders</Text>
-              <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">Send notifications at specific times.</Text>
+              <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">Smart reminders and manual reminder times can work together.</Text>
             </View>
             <Switch
               value={remindersEnabled}
@@ -225,6 +372,12 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
               thumbColor="#fff"
             />
           </View>
+
+          {remindersEnabled && reminderStrategy !== "manual" && (
+            <Text className="text-label-sm text-primary">
+              Smart reminders every {reminderIntervalMinutes ?? 60} minutes from 08:00 to 22:00.
+            </Text>
+          )}
 
           {remindersEnabled && (
             <>
@@ -253,7 +406,7 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
                       className="px-md py-xs rounded-full bg-primary flex-row items-center gap-xs"
                     >
                       <Text className="text-on-primary text-label-lg">{t}</Text>
-                      <Text className="text-on-primary text-label-sm">×</Text>
+                      <Text className="text-on-primary text-label-sm">x</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -297,6 +450,23 @@ export default function HabitForm({ initial, onSubmit, submitLabel = "Save" }: P
             </>
           )}
         </View>
+
+        {!initial && (
+          <View className="bg-surface-container dark:bg-d-surface-container rounded-xl p-md flex-row items-center justify-between gap-md">
+            <View className="flex-1">
+              <Text className="text-body-md text-on-surface dark:text-d-on-surface font-semibold">Merge similar habits</Text>
+              <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">
+                Combine this with an existing habit when it looks like the same goal.
+              </Text>
+            </View>
+            <Switch
+              value={mergeSimilar}
+              onValueChange={setMergeSimilar}
+              trackColor={{ false: "#c9c4d7", true: "#5d3fd3" }}
+              thumbColor="#fff"
+            />
+          </View>
+        )}
 
         {formError && <Text className="text-error text-label-sm text-center">{formError}</Text>}
 

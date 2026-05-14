@@ -77,6 +77,12 @@
       "expo-font",
       "expo-secure-store",
       [
+        "expo-sensors",
+        {
+          "motionPermission": "Lagan uses motion data to count steps for your walking habits."
+        }
+      ],
+      [
         "expo-updates",
         {
           "username": "rk12333"

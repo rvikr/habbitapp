@@ -42,7 +42,7 @@ export default function ResetPasswordScreen() {
           Set a new password
         </Text>
         <Text className="text-body-md text-on-surface-variant dark:text-d-on-surface-variant mb-md">
-          Use at least 12 characters with uppercase, lowercase, and a number.
+          Use at least 8 characters with uppercase, lowercase, and a number.
         </Text>
         <TextInput
           className="bg-surface-container dark:bg-d-surface-container text-on-surface dark:text-d-on-surface rounded-xl px-md py-sm text-body-md"

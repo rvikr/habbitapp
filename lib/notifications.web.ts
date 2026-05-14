@@ -19,6 +19,15 @@ export async function scheduleHabitReminder(
   return [];
 }
 
+export async function scheduleHabitReminderAt(
+  habitId: string,
+  habitName: string,
+  fireAt: Date,
+  body?: string,
+): Promise<string> {
+  return "";
+}
+
 export async function cancelScheduledReminder(id: string): Promise<void> {
 }
 

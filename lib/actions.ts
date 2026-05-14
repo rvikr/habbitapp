@@ -8,10 +8,40 @@ import {
 import type { AvatarStyle } from "./avatar";
 import { track, resetAnalytics } from "./analytics";
 import { authCallbackUrl } from "./auth-redirect";
+import { buildCompletionValuePayload } from "./completions";
 import { localDateKey } from "./date";
 import { cancelHabitReminders, syncScheduledReminders } from "./reminder-sync";
+import {
+  DUPLICATE_SIMILARITY_THRESHOLD,
+  inferHabitIntelligence,
+  mergeHabitSettings,
+  scoreHabitSimilarity,
+  type HabitType,
+  type MetricType,
+  type ReminderStrategy,
+  type VisualType,
+} from "./habit-intelligence";
+import type { Habit } from "@/types/db";
 
 type ActionResult = { ok: boolean; error?: string };
+type HabitMutationData = {
+  name: string;
+  description: string | null;
+  icon: string;
+  color: "primary" | "secondary" | "tertiary" | "neutral";
+  unit: string;
+  target: number | null;
+  remindersEnabled: boolean;
+  reminderTimes: string[];
+  reminderDays: number[];
+  habitType?: HabitType | null;
+  metricType?: MetricType | null;
+  visualType?: VisualType | null;
+  reminderStrategy?: ReminderStrategy | null;
+  reminderIntervalMinutes?: number | null;
+  defaultLogValue?: number | null;
+  mergeSimilar?: boolean;
+};
 
 async function getUser() {
   return getCurrentUser();
@@ -27,6 +57,54 @@ function mutationResult(error: { message?: string } | null | undefined): ActionR
 
 function networkError(): Error {
   return new Error("Network error. Check your connection and try again.");
+}
+
+function isMissingSmartHabitColumn(error: { message?: string; code?: string } | null | undefined): boolean {
+  const message = (error?.message ?? "").toLowerCase();
+  return (
+    error?.code === "PGRST204" ||
+    message.includes("default_log_value") ||
+    message.includes("habit_type") ||
+    message.includes("metric_type") ||
+    message.includes("visual_type") ||
+    message.includes("reminder_strategy") ||
+    message.includes("reminder_interval_minutes")
+  );
+}
+
+function legacyHabitPayload(
+  data: HabitMutationData,
+  intelligence: ReturnType<typeof inferHabitIntelligence>,
+  userId?: string,
+) {
+  return {
+    ...(userId ? { user_id: userId } : {}),
+    name: data.name,
+    description: data.description,
+    icon: data.icon,
+    color: data.color,
+    unit: intelligence.unit || null,
+    target: intelligence.target ?? null,
+    reminders_enabled: data.remindersEnabled,
+    reminder_times: data.reminderTimes,
+    reminder_days: data.reminderDays,
+  };
+}
+
+function smartHabitPayload(
+  data: HabitMutationData,
+  intelligence: ReturnType<typeof inferHabitIntelligence>,
+  userId?: string,
+) {
+  return {
+    ...legacyHabitPayload(data, intelligence, userId),
+    habit_type: intelligence.habitType,
+    metric_type: intelligence.metricType,
+    visual_type: intelligence.visualType,
+    reminder_strategy: intelligence.reminderStrategy,
+    reminder_interval_minutes: intelligence.reminderIntervalMinutes,
+    default_log_value: intelligence.defaultLogValue,
+  };
 }
 
 export async function signIn(email: string, password: string) {
@@ -80,17 +158,45 @@ export async function signOut() {
 export async function logCompletion(habitId: string, value?: number, note?: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return notSignedIn();
+  const completedOn = localDateKey();
+  const { data: existing, error: readError } = await supabase
+    .from("habit_completions")
+    .select("value")
+    .eq("habit_id", habitId)
+    .eq("user_id", user.id)
+    .eq("completed_on", completedOn)
+    .maybeSingle();
+  if (readError) return mutationResult(readError);
+
+  const increment = value ?? 1;
+  const nextValue = Number(existing?.value ?? 0) + increment;
   const { error } = await supabase.from("habit_completions").upsert(
     {
       habit_id: habitId,
       user_id: user.id,
-      completed_on: localDateKey(),
-      value: value ?? 1,
+      completed_on: completedOn,
+      value: nextValue,
       note: note?.trim() || null,
     },
     { onConflict: "habit_id,completed_on" },
   );
-  return mutationResult(error);
+  if (error) return mutationResult(error);
+  await syncScheduledReminders();
+  return { ok: true };
+}
+
+export async function setCompletionValue(habitId: string, value: number, note?: string): Promise<ActionResult> {
+  const user = await getUser();
+  if (!user) return notSignedIn();
+
+  const { error } = await supabase.from("habit_completions").upsert(
+    buildCompletionValuePayload(habitId, user.id, localDateKey(), value, note),
+    { onConflict: "habit_id,completed_on" },
+  );
+  if (error) return mutationResult(error);
+  await syncScheduledReminders();
+  track("habit_progress_set", { habit_id: habitId });
+  return { ok: true };
 }
 
 export async function toggleHabit(habitId: string, currentlyDone: boolean): Promise<ActionResult> {
@@ -105,15 +211,26 @@ export async function toggleHabit(habitId: string, currentlyDone: boolean): Prom
       .eq("user_id", user.id)
       .eq("completed_on", localDateKey());
     if (error) return mutationResult(error);
+    await syncScheduledReminders();
     track("habit_uncompleted", { habit_id: habitId });
     return { ok: true };
   }
 
+  const { data: habit, error: habitError } = await supabase
+    .from("habits")
+    .select("target")
+    .eq("id", habitId)
+    .eq("user_id", user.id)
+    .single();
+  if (habitError) return mutationResult(habitError);
+
+  const target = Number((habit as { target: number | null } | null)?.target ?? 1);
   const { error } = await supabase.from("habit_completions").upsert(
-    { habit_id: habitId, user_id: user.id, completed_on: localDateKey(), value: 1 },
+    { habit_id: habitId, user_id: user.id, completed_on: localDateKey(), value: target > 0 ? target : 1 },
     { onConflict: "habit_id,completed_on" },
   );
   if (error) return mutationResult(error);
+  await syncScheduledReminders();
   track("habit_completed", { habit_id: habitId });
   return { ok: true };
 }
@@ -146,63 +263,125 @@ export async function updateHabitReminders(habitId: string, data: { enabled: boo
   return { ok: true };
 }
 
-export async function createHabit(data: {
-  name: string;
-  description: string | null;
-  icon: string;
-  color: "primary" | "secondary" | "tertiary" | "neutral";
-  unit: string;
-  target: number | null;
-  remindersEnabled: boolean;
-  reminderTimes: string[];
-  reminderDays: number[];
-}) {
+export async function createHabit(data: HabitMutationData) {
   const user = await getUser();
   if (!user) return { ok: false, id: null, error: "You need to sign in again." };
-  const { data: row, error } = await supabase.from("habits").insert({
-    user_id: user.id,
+  const intelligence = inferHabitIntelligence({
     name: data.name,
-    description: data.description,
     icon: data.icon,
-    color: data.color,
-    unit: data.unit || null,
-    target: data.target ?? null,
-    reminders_enabled: data.remindersEnabled,
-    reminder_times: data.reminderTimes,
-    reminder_days: data.reminderDays,
-  }).select("id").single();
-  if (error) return { ok: false, id: null, error: error.message };
+    unit: data.unit,
+    target: data.target,
+    habitType: data.habitType,
+    metricType: data.metricType,
+    visualType: data.visualType,
+    reminderStrategy: data.reminderStrategy,
+    reminderIntervalMinutes: data.reminderIntervalMinutes,
+    defaultLogValue: data.defaultLogValue,
+  });
+
+  const candidate = {
+    ...data,
+    habitType: intelligence.habitType,
+    metricType: intelligence.metricType,
+    visualType: intelligence.visualType,
+    reminderStrategy: intelligence.reminderStrategy,
+    reminderIntervalMinutes: intelligence.reminderIntervalMinutes,
+    defaultLogValue: intelligence.defaultLogValue,
+    unit: intelligence.unit,
+    target: intelligence.target,
+  };
+  let match: { habit: Habit; score: number } | undefined;
+  if (data.mergeSimilar !== false) {
+    const { data: existingHabits, error: readError } = await supabase
+      .from("habits")
+      .select("*")
+      .eq("user_id", user.id)
+      .is("archived_at", null);
+    if (readError) return { ok: false, id: null, error: readError.message };
+    match = ((existingHabits ?? []) as Habit[])
+      .map((habit) => ({ habit, score: scoreHabitSimilarity(candidate, habit) }))
+      .sort((a, b) => b.score - a.score)[0];
+  }
+
+  if (match && match.score >= DUPLICATE_SIMILARITY_THRESHOLD) {
+    const merged = mergeHabitSettings(candidate, match.habit);
+    const nextReminderTimes = Array.from(new Set([...(match.habit.reminder_times ?? []), ...data.reminderTimes])).sort();
+    const nextReminderDays = Array.from(new Set([...(match.habit.reminder_days ?? [0, 1, 2, 3, 4, 5, 6]), ...data.reminderDays])).sort();
+    const mergePayload = {
+      description: match.habit.description ?? data.description,
+      reminders_enabled:
+        !!match.habit.reminders_enabled ||
+        data.remindersEnabled,
+      reminder_times: nextReminderTimes,
+      reminder_days: nextReminderDays,
+      ...merged,
+    };
+    const { error } = await supabase
+      .from("habits")
+      .update(mergePayload)
+      .eq("id", match.habit.id)
+      .eq("user_id", user.id);
+    if (error) {
+      if (!isMissingSmartHabitColumn(error)) return { ok: false, id: null, error: error.message };
+      const { error: legacyError } = await supabase
+        .from("habits")
+        .update({
+          description: match.habit.description ?? data.description,
+          unit: merged.unit,
+          target: merged.target,
+          reminders_enabled: !!match.habit.reminders_enabled || data.remindersEnabled,
+          reminder_times: nextReminderTimes,
+          reminder_days: nextReminderDays,
+        })
+        .eq("id", match.habit.id)
+        .eq("user_id", user.id);
+      if (legacyError) return { ok: false, id: null, error: legacyError.message };
+    }
+    await syncScheduledReminders();
+    track("habit_merged", { habit_type: merged.habit_type, score: match.score });
+    return { ok: true, id: match.habit.id, merged: true };
+  }
+
+  const { data: row, error } = await supabase.from("habits").insert(smartHabitPayload(data, intelligence, user.id)).select("id").single();
+  if (error) {
+    if (!isMissingSmartHabitColumn(error)) return { ok: false, id: null, error: error.message };
+    const { data: legacyRow, error: legacyError } = await supabase
+      .from("habits")
+      .insert(legacyHabitPayload(data, intelligence, user.id))
+      .select("id")
+      .single();
+    if (legacyError) return { ok: false, id: null, error: legacyError.message };
+    if (data.remindersEnabled) await syncScheduledReminders();
+    track("habit_created", { color: data.color, has_target: intelligence.target != null, habit_type: intelligence.habitType, schema: "legacy" });
+    return { ok: true, id: legacyRow?.id as string, migrated: false };
+  }
 
   if (data.remindersEnabled) await syncScheduledReminders();
-  track("habit_created", { color: data.color, has_target: data.target != null });
+  track("habit_created", { color: data.color, has_target: intelligence.target != null, habit_type: intelligence.habitType });
   return { ok: true, id: row?.id as string };
 }
 
-export async function updateHabitFull(habitId: string, data: {
-  name: string;
-  description: string | null;
-  icon: string;
-  color: "primary" | "secondary" | "tertiary" | "neutral";
-  unit: string;
-  target: number | null;
-  remindersEnabled: boolean;
-  reminderTimes: string[];
-  reminderDays: number[];
-}): Promise<ActionResult> {
+export async function updateHabitFull(habitId: string, data: HabitMutationData): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return notSignedIn();
-  const { error } = await supabase.from("habits").update({
+  const intelligence = inferHabitIntelligence({
     name: data.name,
-    description: data.description,
     icon: data.icon,
-    color: data.color,
-    unit: data.unit || null,
-    target: data.target ?? null,
-    reminders_enabled: data.remindersEnabled,
-    reminder_times: data.reminderTimes,
-    reminder_days: data.reminderDays,
-  }).eq("id", habitId).eq("user_id", user.id);
-  if (error) return mutationResult(error);
+    unit: data.unit,
+    target: data.target,
+    habitType: data.habitType,
+    metricType: data.metricType,
+    visualType: data.visualType,
+    reminderStrategy: data.reminderStrategy,
+    reminderIntervalMinutes: data.reminderIntervalMinutes,
+    defaultLogValue: data.defaultLogValue,
+  });
+  const { error } = await supabase.from("habits").update(smartHabitPayload(data, intelligence)).eq("id", habitId).eq("user_id", user.id);
+  if (error) {
+    if (!isMissingSmartHabitColumn(error)) return mutationResult(error);
+    const { error: legacyError } = await supabase.from("habits").update(legacyHabitPayload(data, intelligence)).eq("id", habitId).eq("user_id", user.id);
+    if (legacyError) return mutationResult(legacyError);
+  }
 
   if (data.remindersEnabled) await syncScheduledReminders();
   else await cancelHabitReminders(habitId);

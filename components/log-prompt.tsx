@@ -44,7 +44,9 @@ export default function LogPrompt({ visible, habit, onSubmit, onDismiss }: Props
         <TouchableOpacity className="flex-1" onPress={onDismiss} />
         <View className="bg-surface-lowest dark:bg-d-surface-lowest rounded-t-3xl p-lg">
           <View className="flex-row items-center justify-between mb-md">
-            <Text className="text-headline-md text-on-surface dark:text-d-on-surface font-bold">Log progress</Text>
+            <Text className="text-headline-md text-on-surface dark:text-d-on-surface font-bold">
+              Log {habit?.unit ? habit.unit : "progress"}
+            </Text>
             <TouchableOpacity onPress={onDismiss}>
               <MaterialCommunityIcons name="close" size={24} color="#797586" />
             </TouchableOpacity>
@@ -53,7 +55,7 @@ export default function LogPrompt({ visible, habit, onSubmit, onDismiss }: Props
             <View className="flex-row items-center gap-sm mb-sm">
               <TextInput
                 className="flex-1 bg-surface-container dark:bg-d-surface-container text-on-surface dark:text-d-on-surface rounded-xl px-md py-sm text-body-md"
-                placeholder={`Value (${habit.unit})`}
+                placeholder={`Amount in ${habit.unit}`}
                 placeholderTextColor="#797586"
                 value={value}
                 onChangeText={setValue}

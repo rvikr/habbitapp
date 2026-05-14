@@ -9,8 +9,10 @@ import { useCelebrate } from "@/components/celebration";
 import Icon from "@/components/icon";
 import LogEntryFab from "@/components/log-entry-fab";
 import LogPrompt from "@/components/log-prompt";
+import HabitProgressVisual from "@/components/habit-progress-visual";
 import type { Habit, HabitCompletion } from "@/types/db";
 import { localDateKey } from "@/lib/date";
+import { formatAmount, progressForHabit } from "@/lib/habit-intelligence";
 
 const COLOR_BG: Record<string, string> = { primary: "#e6deff", secondary: "#76f6f2", tertiary: "#ffdbce", neutral: "#e1e3e4" };
 const COLOR_FG: Record<string, string> = { primary: "#451ebb", secondary: "#006a67", tertiary: "#7b2900", neutral: "#484554" };
@@ -37,7 +39,9 @@ export default function HabitDetailScreen() {
   const onRefresh = useCallback(async () => { setRefreshing(true); await load(); setRefreshing(false); }, [load]);
 
   const today = localDateKey();
-  const doneToday = completions.some((c) => c.completed_on === today);
+  const todayCompletion = completions.find((c) => c.completed_on === today);
+  const progress = habit ? progressForHabit(habit, todayCompletion) : null;
+  const doneToday = progress?.isDone ?? false;
   const streak = streakFor(completions);
   const weekDays = habit ? weekProgressFor(habit.id, completions) : [];
 
@@ -62,6 +66,18 @@ export default function HabitDetailScreen() {
     celebrate();
     load();
     return result;
+  }
+
+  async function handleQuickLog() {
+    if (!habit) return;
+    const value = habit.default_log_value ?? 1;
+    const result = await logCompletion(habit.id, value, "");
+    if (!result.ok) {
+      Alert.alert("Could not log progress", result.error ?? "Try again.");
+      return;
+    }
+    celebrate();
+    load();
   }
 
   async function handleDelete() {
@@ -111,12 +127,28 @@ export default function HabitDetailScreen() {
       >
         {/* Header card */}
         <View className="mx-margin-mobile mb-lg rounded-2xl p-lg" style={{ backgroundColor: bg }}>
-          <View className="w-14 h-14 rounded-full items-center justify-center mb-md" style={{ backgroundColor: fg + "20" }}>
-            <Icon name={habit.icon} size={28} color={fg} />
+          <View className="flex-row items-center gap-md mb-md">
+            <View className="w-14 h-14 rounded-full items-center justify-center" style={{ backgroundColor: fg + "20" }}>
+              <Icon name={habit.icon} size={28} color={fg} />
+            </View>
+            {progress && (
+              <HabitProgressVisual
+                visualType={habit.visual_type}
+                progress={progress.ratio}
+                size="large"
+                color={fg}
+                trackColor={fg + "22"}
+              />
+            )}
           </View>
           <Text className="text-headline-lg font-bold mb-xs" style={{ color: fg }}>{habit.name}</Text>
           {habit.description && (
             <Text className="text-body-md" style={{ color: fg + "cc" }}>{habit.description}</Text>
+          )}
+          {progress && (
+            <Text className="text-body-md font-semibold mt-sm" style={{ color: fg }}>
+              {progress.label}
+            </Text>
           )}
         </View>
 
@@ -132,7 +164,7 @@ export default function HabitDetailScreen() {
           </View>
           <View className="flex-1 bg-surface-container dark:bg-d-surface-container rounded-xl p-md items-center">
             <MaterialCommunityIcons name={doneToday ? "check-circle" : "circle-outline"} size={28} color={doneToday ? "#006a67" : "#797586"} />
-            <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">today</Text>
+            <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">{progress?.ratio ? `${Math.round(progress.ratio * 100)}%` : "today"}</Text>
           </View>
         </View>
 
@@ -155,7 +187,19 @@ export default function HabitDetailScreen() {
         </View>
 
         {/* Today toggle */}
-        <View className="px-margin-mobile">
+        <View className="px-margin-mobile gap-sm">
+          {habit.target != null && (
+            <TouchableOpacity
+              className="rounded-full py-sm items-center bg-secondary"
+              onPress={handleQuickLog}
+              disabled={doneToday}
+              style={{ opacity: doneToday ? 0.5 : 1 }}
+            >
+              <Text className="text-on-primary text-label-lg font-semibold">
+                +{formatAmount(habit.default_log_value ?? 1)} {habit.unit ?? ""}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             className={`rounded-full py-sm items-center ${doneToday ? "bg-secondary" : "bg-primary"}`}
             onPress={handleToggle}

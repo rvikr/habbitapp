@@ -1,6 +1,6 @@
 import { getItem, removeItem, setItem } from "@/lib/storage";
 import { getReminderSchedule } from "@/lib/reminders";
-import { cancelScheduledReminder, getPermissionStatus, scheduleHabitReminder } from "@/lib/notifications";
+import { cancelScheduledReminder, getPermissionStatus, scheduleHabitReminder, scheduleHabitReminderAt } from "@/lib/notifications";
 import type { ReminderContext } from "@/lib/reminders";
 
 const STORAGE_KEY = "habbit:scheduled-reminder-ids";
@@ -26,6 +26,11 @@ export function buildSmartBody(habitName: string, ctx: ReminderContext): string 
   return habitName;
 }
 
+function buildProgressBody(habitName: string, progressLabel?: string): string {
+  if (!progressLabel) return habitName;
+  return `${progressLabel}. Keep going.`;
+}
+
 export async function syncScheduledReminders(): Promise<void> {
   const status = await getPermissionStatus();
   if (status !== "granted") return;
@@ -35,15 +40,21 @@ export async function syncScheduledReminders(): Promise<void> {
   const next: ReminderIdMap = {};
 
   for (const reminder of schedule) {
+    if (reminder.fireAt) {
+      const id = await scheduleHabitReminderAt(
+        reminder.habitId,
+        reminder.habitName,
+        reminder.fireAt,
+        buildProgressBody(reminder.habitName, reminder.progressLabel),
+      );
+      if (id) next[reminder.habitId] = [...(next[reminder.habitId] ?? []), id];
+      continue;
+    }
+
+    if (!reminder.time || !reminder.days) continue;
     const body = buildSmartBody(reminder.habitName, reminder.context);
-    const ids = await scheduleHabitReminder(
-      reminder.habitId,
-      reminder.habitName,
-      reminder.time,
-      reminder.days,
-      body,
-    );
-    next[reminder.habitId] = [...(next[reminder.habitId] ?? []), ...ids];
+    const ids = await scheduleHabitReminder(reminder.habitId, reminder.habitName, reminder.time, reminder.days, body);
+    if (ids.length > 0) next[reminder.habitId] = [...(next[reminder.habitId] ?? []), ...ids];
   }
 
   await setItem(STORAGE_KEY, JSON.stringify(next));

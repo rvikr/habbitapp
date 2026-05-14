@@ -1,3 +1,5 @@
+import type { HabitType, MetricType, ReminderStrategy, VisualType } from "./habit-intelligence";
+
 export type ColorId = "primary" | "secondary" | "tertiary" | "neutral";
 
 export type CatalogEntry = {
@@ -9,6 +11,13 @@ export type CatalogEntry = {
   unit: string;
   target: number | null;
   defaultTimes: string[];
+  habitType: HabitType;
+  metricType: MetricType;
+  visualType: VisualType;
+  reminderStrategy: ReminderStrategy;
+  reminderIntervalMinutes: number | null;
+  defaultLogValue: number | null;
+  remindersEnabledByDefault?: boolean;
 };
 
 export const HABIT_CATALOG: CatalogEntry[] = [
@@ -20,7 +29,14 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     color: "secondary",
     unit: "ml",
     target: 2000,
-    defaultTimes: ["08:00", "12:00", "16:00", "20:00"],
+    defaultTimes: [],
+    habitType: "water_intake",
+    metricType: "volume_ml",
+    visualType: "water_bottle",
+    reminderStrategy: "interval",
+    reminderIntervalMinutes: 120,
+    defaultLogValue: 250,
+    remindersEnabledByDefault: true,
   },
   {
     template: "run",
@@ -31,6 +47,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "km",
     target: 5,
     defaultTimes: ["07:00"],
+    habitType: "run",
+    metricType: "distance_km",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 1,
   },
   {
     template: "walk",
@@ -38,9 +60,16 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     description: "Take a brisk walk every day.",
     icon: "directions_walk",
     color: "tertiary",
-    unit: "km",
-    target: 3,
-    defaultTimes: ["08:00"],
+    unit: "steps",
+    target: 8000,
+    defaultTimes: [],
+    habitType: "walk",
+    metricType: "steps",
+    visualType: "step_path",
+    reminderStrategy: "conditional_interval",
+    reminderIntervalMinutes: 60,
+    defaultLogValue: 1000,
+    remindersEnabledByDefault: true,
   },
   {
     template: "read",
@@ -51,6 +80,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "pages",
     target: 20,
     defaultTimes: ["21:00"],
+    habitType: "read",
+    metricType: "pages",
+    visualType: "reading_book",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 10,
   },
   {
     template: "meditate",
@@ -61,6 +96,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "min",
     target: 10,
     defaultTimes: ["07:30"],
+    habitType: "meditate",
+    metricType: "minutes",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 5,
   },
   {
     template: "journal",
@@ -71,6 +112,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "",
     target: null,
     defaultTimes: ["22:00"],
+    habitType: "journal",
+    metricType: "boolean",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: null,
   },
   {
     template: "workout",
@@ -81,6 +128,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "min",
     target: 45,
     defaultTimes: ["07:00"],
+    habitType: "workout",
+    metricType: "minutes",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 15,
   },
   {
     template: "sleep",
@@ -91,6 +144,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "hr",
     target: 8,
     defaultTimes: ["22:30"],
+    habitType: "sleep",
+    metricType: "hours",
+    visualType: "sleep_moon",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 1,
   },
   {
     template: "vitamins",
@@ -101,6 +160,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "",
     target: null,
     defaultTimes: ["08:00"],
+    habitType: "vitamins",
+    metricType: "boolean",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: null,
   },
   {
     template: "healthy_eating",
@@ -111,6 +176,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "",
     target: null,
     defaultTimes: ["12:00"],
+    habitType: "healthy_eating",
+    metricType: "boolean",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: null,
   },
   {
     template: "cold_shower",
@@ -121,6 +192,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "min",
     target: 3,
     defaultTimes: ["07:00"],
+    habitType: "cold_shower",
+    metricType: "minutes",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 1,
   },
   {
     template: "no_social_media",
@@ -131,6 +208,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "",
     target: null,
     defaultTimes: [],
+    habitType: "no_social_media",
+    metricType: "boolean",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: null,
   },
   {
     template: "coding",
@@ -141,6 +224,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "min",
     target: 60,
     defaultTimes: ["10:00"],
+    habitType: "coding",
+    metricType: "minutes",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 15,
   },
   {
     template: "stretch",
@@ -151,6 +240,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "min",
     target: 15,
     defaultTimes: ["08:00"],
+    habitType: "stretch",
+    metricType: "minutes",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 5,
   },
   {
     template: "cycling",
@@ -161,6 +256,12 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "km",
     target: 10,
     defaultTimes: ["07:30"],
+    habitType: "cycling",
+    metricType: "distance_km",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: 2,
   },
   {
     template: "cooking",
@@ -171,5 +272,11 @@ export const HABIT_CATALOG: CatalogEntry[] = [
     unit: "",
     target: null,
     defaultTimes: ["18:00"],
+    habitType: "cooking",
+    metricType: "boolean",
+    visualType: "progress_ring",
+    reminderStrategy: "manual",
+    reminderIntervalMinutes: null,
+    defaultLogValue: null,
   },
 ];

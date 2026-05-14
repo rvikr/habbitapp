@@ -10,8 +10,14 @@ export default function NewHabitScreen() {
 
   async function handleCreate(data: Parameters<typeof createHabit>[0]) {
     const result = await createHabit(data);
-    if (result.ok) router.replace("/");
-    else Alert.alert("Could not create habit", result.error ?? "Try again.");
+    if (result.ok) {
+      if ("merged" in result && result.merged) {
+        Alert.alert("Habit updated", "A similar habit already existed, so I bundled the new goal into it.");
+      } else if ("migrated" in result && result.migrated === false) {
+        Alert.alert("Habit created", "Apply the latest Supabase migration to enable saved smart metrics for this habit.");
+      }
+      router.replace("/");
+    } else Alert.alert("Could not create habit", result.error ?? "Try again.");
   }
 
   return (

@@ -25,6 +25,51 @@ create index if not exists habits_user_id_idx on public.habits(user_id);
 alter table public.habits add column if not exists reminder_times text[] default '{}'::text[];
 alter table public.habits add column if not exists reminder_days  int[]  default '{0,1,2,3,4,5,6}'::int[];
 alter table public.habits add column if not exists reminders_enabled boolean default false;
+alter table public.habits add column if not exists habit_type text default 'custom';
+alter table public.habits add column if not exists metric_type text default 'boolean';
+alter table public.habits add column if not exists visual_type text default 'progress_ring';
+alter table public.habits add column if not exists reminder_strategy text default 'manual';
+alter table public.habits add column if not exists reminder_interval_minutes int;
+alter table public.habits add column if not exists default_log_value numeric;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'habits_habit_type_check'
+      and conrelid = 'public.habits'::regclass
+  ) then
+    alter table public.habits add constraint habits_habit_type_check
+      check (habit_type in ('water_intake', 'walk', 'sleep', 'read', 'run', 'cycling', 'meditate', 'workout', 'journal', 'vitamins', 'healthy_eating', 'cold_shower', 'no_social_media', 'coding', 'stretch', 'cooking', 'custom'));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'habits_metric_type_check'
+      and conrelid = 'public.habits'::regclass
+  ) then
+    alter table public.habits add constraint habits_metric_type_check
+      check (metric_type in ('volume_ml', 'steps', 'hours', 'pages', 'minutes', 'distance_km', 'boolean'));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'habits_visual_type_check'
+      and conrelid = 'public.habits'::regclass
+  ) then
+    alter table public.habits add constraint habits_visual_type_check
+      check (visual_type in ('water_bottle', 'step_path', 'sleep_moon', 'reading_book', 'progress_ring'));
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'habits_reminder_strategy_check'
+      and conrelid = 'public.habits'::regclass
+  ) then
+    alter table public.habits add constraint habits_reminder_strategy_check
+      check (reminder_strategy in ('manual', 'interval', 'conditional_interval'));
+  end if;
+end $$;
 
 create table if not exists public.habit_completions (
   id            uuid primary key default gen_random_uuid(),

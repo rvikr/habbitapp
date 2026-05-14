@@ -49,6 +49,25 @@ export async function scheduleHabitReminder(
   return ids;
 }
 
+export async function scheduleHabitReminderAt(
+  habitId: string,
+  habitName: string,
+  fireAt: Date,
+  body?: string,
+): Promise<string> {
+  return Notifications.scheduleNotificationAsync({
+    content: {
+      title: habitName,
+      body: body ?? habitName,
+      data: { habitId },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: fireAt,
+    },
+  });
+}
+
 export async function cancelAllReminders(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
 }

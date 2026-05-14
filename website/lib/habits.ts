@@ -31,7 +31,7 @@ export async function getHabitsForToday() {
         .order("created_at", { ascending: true }),
       supabase
         .from("habit_completions")
-        .select("habit_id")
+        .select("habit_id, value")
         .eq("completed_on", dateKeyInTimeZone(new Date(), timeZone)),
       supabase
         .from("profiles")
@@ -40,8 +40,16 @@ export async function getHabitsForToday() {
         .maybeSingle(),
     ]);
 
+  const habitsList = (habits ?? []) as Habit[];
+  const completionByHabit = new Map((completions ?? []).map((c) => [c.habit_id as string, Number(c.value ?? 1)]));
   const completedToday = new Set(
-    (completions ?? []).map((c) => c.habit_id as string)
+    habitsList
+      .filter((habit) => {
+        if (!completionByHabit.has(habit.id)) return false;
+        const target = habit.target == null ? null : Number(habit.target);
+        return target && target > 0 ? (completionByHabit.get(habit.id) ?? 0) >= target : true;
+      })
+      .map((habit) => habit.id)
   );
   const displayName =
     (profile?.display_name as string | null | undefined) ??
@@ -50,7 +58,7 @@ export async function getHabitsForToday() {
     "there";
 
   return {
-    habits: (habits ?? []) as Habit[],
+    habits: habitsList,
     completedToday,
     displayName,
     email: user.email ?? null,

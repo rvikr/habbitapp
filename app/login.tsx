@@ -121,7 +121,7 @@ export default function LoginScreen() {
                 <View className="flex-row bg-surface-container dark:bg-d-surface-container rounded-xl overflow-hidden items-center">
                   <TextInput
                     className="flex-1 text-on-surface dark:text-d-on-surface px-md py-sm text-body-md"
-                    placeholder={mode === "signup" ? "12+ chars, mixed case + number" : "••••••••"}
+                    placeholder={mode === "signup" ? "8+ chars, mixed case + number" : "••••••••"}
                     placeholderTextColor="#797586"
                     value={password}
                     onChangeText={setPassword}

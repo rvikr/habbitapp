@@ -4,12 +4,14 @@ import { addLocalDays, localDateKey, localDateDaysAgo } from "./date";
 import { streakFromDates } from "./streak";
 import { XP_PER_LEVEL, levelForXp, xpForCompletions, xpInLevel } from "./xp";
 import type { Milestone } from "@/types/db";
+import { progressForHabit, type HabitProgress } from "./habit-intelligence";
 
 export type Insights = {
   mostProductiveDay: string | null;
   consistencyChangePct: number | null;
   peakTimeLabel: string | null;
 };
+export type TodayProgressMap = Map<string, HabitProgress>;
 
 const today = () => localDateKey();
 
@@ -19,19 +21,26 @@ async function getUser() {
 
 export async function getHabitsForToday() {
   if (!isSupabaseConfigured()) {
-    return { habits: [] as Habit[], completedToday: new Set<string>(), profile: { displayName: "Demo", email: null }, leaderboardOptedIn: false };
+    return { habits: [] as Habit[], completedToday: new Set<string>(), todayProgress: new Map<string, HabitProgress>(), profile: { displayName: "Demo", email: null }, leaderboardOptedIn: false };
   }
 
   const user = await getUser();
-  if (!user) return { habits: [] as Habit[], completedToday: new Set<string>(), profile: { displayName: "there", email: null }, leaderboardOptedIn: false };
+  if (!user) return { habits: [] as Habit[], completedToday: new Set<string>(), todayProgress: new Map<string, HabitProgress>(), profile: { displayName: "there", email: null }, leaderboardOptedIn: false };
 
   const [{ data: habits }, { data: completions }, { data: profile }] = await Promise.all([
     supabase.from("habits").select("*").is("archived_at", null).order("created_at", { ascending: true }),
-    supabase.from("habit_completions").select("habit_id").eq("completed_on", today()),
+    supabase.from("habit_completions").select("habit_id, value").eq("completed_on", today()),
     supabase.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle(),
   ]);
 
-  const completedToday = new Set((completions ?? []).map((c) => c.habit_id as string));
+  const habitsList = (habits ?? []) as Habit[];
+  const completionsByHabit = new Map((completions ?? []).map((c) => [c.habit_id as string, { value: c.value as number | null }]));
+  const todayProgress: TodayProgressMap = new Map(
+    habitsList.map((habit) => [habit.id, progressForHabit(habit, completionsByHabit.get(habit.id))]),
+  );
+  const completedToday = new Set(
+    [...todayProgress.entries()].filter(([, progress]) => progress.isDone).map(([habitId]) => habitId),
+  );
   const displayName =
     (profile?.display_name as string | null | undefined) ??
     (user.user_metadata?.full_name as string | undefined) ??
@@ -39,8 +48,9 @@ export async function getHabitsForToday() {
     "there";
 
   return {
-    habits: (habits ?? []) as Habit[],
+    habits: habitsList,
     completedToday,
+    todayProgress,
     profile: { displayName, email: user.email ?? null },
     leaderboardOptedIn: !!(profile?.display_name as string | null | undefined),
   };

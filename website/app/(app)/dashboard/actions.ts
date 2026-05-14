@@ -20,8 +20,15 @@ export async function toggleHabit(habitId: string, currentlyDone: boolean, compl
       .eq("user_id", user.id)
       .eq("completed_on", completedOn);
   } else {
+    const { data: habit } = await supabase
+      .from("habits")
+      .select("target")
+      .eq("id", habitId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const target = Number(habit?.target ?? 1);
     await supabase.from("habit_completions").upsert(
-      { habit_id: habitId, user_id: user.id, completed_on: completedOn, value: 1 },
+      { habit_id: habitId, user_id: user.id, completed_on: completedOn, value: target > 0 ? target : 1 },
       { onConflict: "habit_id,completed_on" }
     );
   }

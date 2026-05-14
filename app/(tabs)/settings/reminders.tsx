@@ -55,7 +55,8 @@ export default function RemindersScreen() {
       }
     }
 
-    if (enabled && (habit.reminder_times ?? []).length === 0) {
+    const usesSmartReminders = habit.reminder_strategy === "interval" || habit.reminder_strategy === "conditional_interval";
+    if (enabled && !usesSmartReminders && (habit.reminder_times ?? []).length === 0) {
       Alert.alert("Add a reminder time", "Edit the habit and add at least one reminder time first.");
       return;
     }
@@ -107,6 +108,11 @@ export default function RemindersScreen() {
                   thumbColor="#fff"
                 />
               </View>
+              {(habit.reminder_strategy === "interval" || habit.reminder_strategy === "conditional_interval") && (
+                <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">
+                  Smart reminders every {habit.reminder_interval_minutes ?? 60} minutes, 08:00-22:00
+                </Text>
+              )}
               {habit.reminder_times && habit.reminder_times.length > 0 && (
                 <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant">
                   {habit.reminder_times.join(", ")}

@@ -7,6 +7,14 @@ import { validatePassword } from "../lib/password.ts";
 import { isMissingRefreshTokenError } from "../lib/supabase/auth-error.ts";
 import { isValidReminderTime, parseOptionalPositiveNumber, validateFeedback } from "../lib/validation.ts";
 import { streakFromDates } from "../lib/streak.ts";
+import { buildCompletionValuePayload } from "../lib/completions.ts";
+import {
+  inferHabitIntelligence,
+  mergeHabitSettings,
+  progressForHabit,
+  scoreHabitSimilarity,
+  smartReminderTimesForDay,
+} from "../lib/habit-intelligence.ts";
 import {
   dateKeyInTimeZone,
   isValidDateKey,
@@ -72,8 +80,9 @@ test("Supabase stale refresh token errors are recognized", () => {
 });
 
 test("password validation rejects weak passwords", () => {
-  assert.equal(validatePassword("short"), "Password must be at least 12 characters.");
+  assert.equal(validatePassword("Short1"), "Password must be at least 8 characters.");
   assert.equal(validatePassword("lowercaseonly1"), "Password must include an uppercase letter.");
+  assert.equal(validatePassword("Valid123"), null);
   assert.equal(validatePassword("ValidPassword1"), null);
 });
 
@@ -131,4 +140,112 @@ test("streakFromDates ignores duplicate days", () => {
   const today = new Date(2026, 4, 10);
   const key = localDateKey(today);
   assert.equal(streakFromDates([key, key, localDateDaysAgo(1, today)], today), 2);
+});
+
+test("habit intelligence assigns habit-specific metrics", () => {
+  assert.deepEqual(
+    inferHabitIntelligence({ name: "Drink Water", unit: "ml", target: 2000 }).metricType,
+    "volume_ml",
+  );
+  const walk = inferHabitIntelligence({ name: "Walk", unit: "km", target: 3 });
+  assert.equal(walk.metricType, "steps");
+  assert.equal(walk.unit, "steps");
+  assert.equal(walk.target, 8000);
+  const timedReading = inferHabitIntelligence({ name: "Read for 30 minutes" });
+  assert.equal(timedReading.metricType, "minutes");
+  assert.equal(timedReading.target, 30);
+});
+
+test("habit intelligence normalizes water litre goals to ml", () => {
+  const water = inferHabitIntelligence({ name: "Drink 1 litre water daily" });
+  assert.equal(water.habitType, "water_intake");
+  assert.equal(water.unit, "ml");
+  assert.equal(water.target, 1000);
+});
+
+test("habit intelligence converts selected display units into base storage units", () => {
+  const water = inferHabitIntelligence({ name: "Drink water", unit: "l", target: 2, habitType: "water_intake", metricType: "volume_ml" });
+  assert.equal(water.unit, "ml");
+  assert.equal(water.target, 2000);
+  const run = inferHabitIntelligence({ name: "Run", unit: "m", target: 500, habitType: "run", metricType: "distance_km" });
+  assert.equal(run.unit, "km");
+  assert.equal(run.target, 0.5);
+});
+
+test("progressForHabit supports partial and completed target habits", () => {
+  const habit = {
+    id: "h1",
+    user_id: "u1",
+    name: "Drink Water",
+    description: null,
+    icon: "water_drop",
+    color: "secondary",
+    target: 2000,
+    unit: "ml",
+    reminder_time: null,
+    reminder_times: [],
+    reminder_days: [0, 1, 2, 3, 4, 5, 6],
+    reminders_enabled: true,
+    habit_type: "water_intake",
+    metric_type: "volume_ml",
+    visual_type: "water_bottle",
+    reminder_strategy: "interval",
+    reminder_interval_minutes: 120,
+    default_log_value: 250,
+    created_at: "2026-05-10T00:00:00Z",
+    archived_at: null,
+  };
+  assert.equal(progressForHabit(habit, null).isDone, false);
+  assert.equal(progressForHabit(habit, { value: 750 }).label, "750 / 2000 ml");
+  assert.equal(progressForHabit(habit, { value: 2000 }).isDone, true);
+});
+
+test("completion value payload stores absolute values", () => {
+  assert.deepEqual(
+    buildCompletionValuePayload("habit-1", "user-1", "2026-05-14", 1234.9, " synced "),
+    {
+      habit_id: "habit-1",
+      user_id: "user-1",
+      completed_on: "2026-05-14",
+      value: 1234,
+      note: "synced",
+    },
+  );
+});
+
+test("duplicate scoring and merging combine compatible water habits", () => {
+  const existing = {
+    id: "h1",
+    user_id: "u1",
+    name: "Drink 1 litre water daily",
+    description: null,
+    icon: "water_drop",
+    color: "secondary",
+    target: 1000,
+    unit: "ml",
+    reminder_time: null,
+    reminder_times: [],
+    reminder_days: [0, 1, 2, 3, 4, 5, 6],
+    reminders_enabled: true,
+    habit_type: "water_intake",
+    metric_type: "volume_ml",
+    visual_type: "water_bottle",
+    reminder_strategy: "interval",
+    reminder_interval_minutes: 120,
+    default_log_value: 250,
+    created_at: "2026-05-10T00:00:00Z",
+    archived_at: null,
+  };
+  const candidate = { name: "Drink more water", icon: "water_drop", unit: "ml", target: 2000 };
+  assert.ok(scoreHabitSimilarity(candidate, existing) >= 0.8);
+  const merged = mergeHabitSettings(candidate, existing);
+  assert.equal(merged.target, 2000);
+  assert.equal(merged.metric_type, "volume_ml");
+});
+
+test("smart reminder slots respect active hours and intervals", () => {
+  const slots = smartReminderTimesForDay(new Date(2026, 4, 10, 7, 30), 120);
+  assert.deepEqual(slots.map((slot) => slot.getHours()), [8, 10, 12, 14, 16, 18, 20, 22]);
+  const midday = smartReminderTimesForDay(new Date(2026, 4, 10, 12, 30), 60);
+  assert.equal(midday[0].getHours(), 13);
 });
