@@ -117,6 +117,7 @@ export default function SettingsScreen() {
         <View className="px-margin-mobile mb-lg">
           <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mb-sm">ACCOUNT</Text>
           <SettingsRow icon="bell" label="Reminders" onPress={() => router.push("/settings/reminders")} />
+          <SettingsRow icon="message-text-outline" label="AI Coach" onPress={() => router.push("/settings/coach")} />
           <SettingsRow icon="message-alert-outline" label="Send Feedback" onPress={() => router.push("/settings/feedback" as never)} />
           <SettingsRow icon="star-outline" label="Rate Lagan" onPress={() => requestReviewManually()} />
           <SettingsRow icon="email-outline" label="Contact Support" onPress={() => {

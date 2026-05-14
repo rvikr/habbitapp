@@ -46,6 +46,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="sleep"
+        options={{
+          title: "Sleep",
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="sleep" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="leaderboard"
         options={{
           title: "Ranks",

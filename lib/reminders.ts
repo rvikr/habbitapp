@@ -7,6 +7,9 @@ import {
   type ReminderStrategy,
 } from "./habit-intelligence";
 import type { Habit } from "../types/db";
+import { buildCoachSignals, chooseTopCoachSignal, normalizeCoachTone } from "./coach";
+import { resolveCoachMessage } from "./coach-ai";
+import { getAiSuggestionsEnabled } from "./feature-flags";
 
 export type ReminderContext = {
   streak: number;
@@ -24,6 +27,7 @@ export type ScheduledReminder = {
   strategy: ReminderStrategy;
   context: ReminderContext;
   progressLabel?: string;
+  coachMessage?: string;
 };
 
 // Returns the hour (0-23) the user most often logs this habit, or null if too few data points.
@@ -58,7 +62,7 @@ export async function getReminderSchedule(): Promise<ScheduledReminder[]> {
 
   const cutoff = localDateDaysAgo(60);
 
-  const [{ data: smartHabits, error: smartHabitError }, { data: completions }, { count: totalOnLeaderboard }, { data: myEntry }] =
+  const [{ data: smartHabits, error: smartHabitError }, { data: completions }, { count: totalOnLeaderboard }, { data: myEntry }, { data: profile }] =
     await Promise.all([
       supabase
         .from("habits")
@@ -72,6 +76,7 @@ export async function getReminderSchedule(): Promise<ScheduledReminder[]> {
         .gte("completed_on", cutoff),
       supabase.from("leaderboard").select("user_id", { count: "exact", head: true }),
       supabase.from("leaderboard").select("total_xp").eq("user_id", user.id).maybeSingle(),
+      supabase.from("profiles").select("coach_tone").eq("user_id", user.id).maybeSingle(),
     ]);
   let habits = smartHabits as Array<Record<string, unknown>> | null;
   if (smartHabitError && isMissingSmartHabitColumn(smartHabitError)) {
@@ -109,6 +114,8 @@ export async function getReminderSchedule(): Promise<ScheduledReminder[]> {
   const schedule: ScheduledReminder[] = [];
   const todayKey = localDateKey();
   const now = new Date();
+  const coachTone = normalizeCoachTone(profile?.coach_tone as string | null | undefined);
+  const aiCoachEnabled = await getAiSuggestionsEnabled();
   for (const h of habits ?? []) {
     const habit = h as Habit;
     const times = (h.reminder_times ?? []) as string[];
@@ -117,6 +124,8 @@ export async function getReminderSchedule(): Promise<ScheduledReminder[]> {
     const streak = streakFromDates(hc.map((c) => c.completed_on));
     const typicalHour = typicalHourFromTimestamps(hc.map((c) => c.created_at));
     const context = { streak, typicalHour, percentileAhead };
+    const localCoachSignal = chooseTopCoachSignal(buildCoachSignals({ habits: [habit], completions: hc.map((c) => ({ habit_id: habit.id, ...c })), now, tone: coachTone }));
+    const coachMessage = localCoachSignal ? await resolveCoachMessage(localCoachSignal, { enabled: aiCoachEnabled }) : undefined;
 
     for (const time of times) {
       if (!/^\d{2}:\d{2}$/.test(time)) continue;
@@ -128,6 +137,7 @@ export async function getReminderSchedule(): Promise<ScheduledReminder[]> {
         time,
         days,
         context,
+        coachMessage,
       });
     }
 
@@ -149,6 +159,7 @@ export async function getReminderSchedule(): Promise<ScheduledReminder[]> {
         fireAt,
         context,
         progressLabel: progress.label,
+        coachMessage,
       });
     }
   }

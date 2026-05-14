@@ -14,12 +14,26 @@ import {
   normalizeStepCount,
 } from "../lib/steps-shared.ts";
 import {
+  buildSleepCompletionValue,
+  computeSleepScore,
+  normalizeHealthConnectSleepSessions,
+  normalizeHealthKitSleepSamples,
+  sleepDateForWakeTime,
+  sleepWindowForDate,
+} from "../lib/sleep-shared.ts";
+import {
   inferHabitIntelligence,
   mergeHabitSettings,
   progressForHabit,
   scoreHabitSimilarity,
   smartReminderTimesForDay,
 } from "../lib/habit-intelligence.ts";
+import {
+  buildCoachSignals,
+  formatCoachMessage,
+  chooseTopCoachSignal,
+} from "../lib/coach.ts";
+import { resolveCoachMessage } from "../lib/coach-ai.ts";
 import {
   dateKeyInTimeZone,
   isValidDateKey,
@@ -240,6 +254,82 @@ test("health connect step aggregate normalization returns integer totals", () =>
   assert.equal(normalizeHealthConnectStepAggregate(null), null);
 });
 
+test("sleep date is assigned from wake time and windows span 18:00 to 18:00", () => {
+  assert.equal(sleepDateForWakeTime(new Date(2026, 4, 14, 7, 30)), "2026-05-14");
+  assert.equal(sleepDateForWakeTime(new Date(2026, 4, 14, 17, 59)), "2026-05-14");
+  assert.equal(sleepDateForWakeTime(new Date(2026, 4, 14, 18, 0)), "2026-05-15");
+
+  const window = sleepWindowForDate("2026-05-14");
+  const start = new Date(window.startTime);
+  const end = new Date(window.endTime);
+  assert.equal(start.getFullYear(), 2026);
+  assert.equal(start.getMonth(), 4);
+  assert.equal(start.getDate(), 13);
+  assert.equal(start.getHours(), 18);
+  assert.equal(end.getDate(), 14);
+  assert.equal(end.getHours(), 18);
+});
+
+test("health connect sleep sessions normalize duration and stages", () => {
+  const normalized = normalizeHealthConnectSleepSessions([
+    {
+      startTime: "2026-05-13T22:30:00.000Z",
+      endTime: "2026-05-14T06:30:00.000Z",
+      stages: [
+        { startTime: "2026-05-13T22:30:00.000Z", endTime: "2026-05-14T00:00:00.000Z", stage: 4 },
+        { startTime: "2026-05-14T00:00:00.000Z", endTime: "2026-05-14T02:00:00.000Z", stage: 5 },
+        { startTime: "2026-05-14T02:00:00.000Z", endTime: "2026-05-14T06:30:00.000Z", stage: 1 },
+      ],
+    },
+  ]);
+
+  assert.equal(normalized?.sleepDate, "2026-05-14");
+  assert.equal(normalized?.durationMinutes, 480);
+  assert.equal(normalized?.stageMinutes?.deep, 90);
+  assert.equal(normalized?.stageMinutes?.rem, 120);
+  assert.equal(normalized?.stageMinutes?.asleep, 270);
+});
+
+test("healthkit sleep samples count asleep categories and ignore in-bed/awake", () => {
+  const normalized = normalizeHealthKitSleepSamples([
+    { startDate: "2026-05-13T21:45:00.000Z", endDate: "2026-05-13T22:30:00.000Z", value: 0 },
+    { startDate: "2026-05-13T22:30:00.000Z", endDate: "2026-05-14T01:30:00.000Z", value: 3 },
+    { startDate: "2026-05-14T01:30:00.000Z", endDate: "2026-05-14T02:00:00.000Z", value: 2 },
+    { startDate: "2026-05-14T02:00:00.000Z", endDate: "2026-05-14T06:00:00.000Z", value: 5 },
+  ]);
+
+  assert.equal(normalized?.sleepDate, "2026-05-14");
+  assert.equal(normalized?.durationMinutes, 420);
+  assert.equal(normalized?.stageMinutes?.core, 180);
+  assert.equal(normalized?.stageMinutes?.rem, 240);
+  assert.equal(normalized?.stageMinutes?.awake, 30);
+});
+
+test("sleep score is duration-first with neutral consistency and stage points", () => {
+  assert.equal(computeSleepScore({ durationMinutes: 480, targetMinutes: 480, recentEntries: [] }), 100);
+  assert.equal(computeSleepScore({ durationMinutes: 240, targetMinutes: 480, recentEntries: [] }), 58);
+  assert.equal(
+    computeSleepScore({
+      durationMinutes: 480,
+      targetMinutes: 480,
+      startMinutes: 23 * 60,
+      endMinutes: 7 * 60,
+      recentEntries: [
+        { startMinutes: 22 * 60 + 45, endMinutes: 6 * 60 + 45 },
+        { startMinutes: 23 * 60, endMinutes: 7 * 60 },
+        { startMinutes: 23 * 60 + 15, endMinutes: 7 * 60 + 10 },
+      ],
+      stageMinutes: { deep: 0, rem: 0, core: 0, asleep: 480, awake: 0 },
+    }),
+    95,
+  );
+});
+
+test("sleep completion value stores hours from synced minutes", () => {
+  assert.equal(buildSleepCompletionValue(465), 7.8);
+  assert.equal(buildSleepCompletionValue(-20), 0);
+});
+
 test("duplicate scoring and merging combine compatible water habits", () => {
   const existing = {
     id: "h1",
@@ -275,4 +365,152 @@ test("smart reminder slots respect active hours and intervals", () => {
   assert.deepEqual(slots.map((slot) => slot.getHours()), [8, 10, 12, 14, 16, 18, 20, 22]);
   const midday = smartReminderTimesForDay(new Date(2026, 4, 10, 12, 30), 60);
   assert.equal(midday[0].getHours(), 13);
+});
+
+const coachHabit = {
+  id: "coach-water",
+  user_id: "u1",
+  name: "Drink Water",
+  description: null,
+  icon: "water_drop",
+  color: "secondary",
+  target: 2000,
+  unit: "ml",
+  reminder_time: null,
+  reminder_times: [],
+  reminder_days: [0, 1, 2, 3, 4, 5, 6],
+  reminders_enabled: true,
+  habit_type: "water_intake",
+  metric_type: "volume_ml",
+  visual_type: "water_bottle",
+  reminder_strategy: "interval",
+  reminder_interval_minutes: 120,
+  default_log_value: 250,
+  created_at: "2026-05-01T00:00:00Z",
+  archived_at: null,
+};
+
+test("coach detects target habits falling behind by time of day", () => {
+  const signals = buildCoachSignals({
+    habits: [coachHabit],
+    completions: [{ habit_id: coachHabit.id, completed_on: "2026-05-14", created_at: "2026-05-14T09:00:00", value: 600 }],
+    now: new Date(2026, 4, 14, 16, 0),
+    tone: "friendly",
+  });
+  const signal = signals.find((item) => item.kind === "behind_progress");
+  assert.equal(signal?.habitId, coachHabit.id);
+  assert.equal(signal?.suggestedAction, "log_value");
+  assert.equal(signal?.suggestedValue, 500);
+  assert.match(signal?.message ?? "", /only completed 30%/i);
+});
+
+test("coach detects same-weekday late skip windows and suggests an easier version", () => {
+  const workout = {
+    ...coachHabit,
+    id: "coach-workout",
+    name: "Workout",
+    target: 45,
+    unit: "min",
+    habit_type: "workout",
+    metric_type: "minutes",
+    default_log_value: 15,
+  };
+  const signals = buildCoachSignals({
+    habits: [workout],
+    completions: [
+      { habit_id: workout.id, completed_on: "2026-05-12", created_at: "2026-05-12T18:30:00", value: 45 },
+      { habit_id: workout.id, completed_on: "2026-05-11", created_at: "2026-05-11T18:30:00", value: 45 },
+      { habit_id: workout.id, completed_on: "2026-05-06", created_at: "2026-05-06T18:30:00", value: 45 },
+      { habit_id: workout.id, completed_on: "2026-04-29", created_at: "2026-04-29T18:30:00", value: 45 },
+    ],
+    now: new Date(2026, 4, 13, 20, 30),
+    tone: "motivational",
+  });
+  const signal = signals.find((item) => item.kind === "usual_skip_window");
+  assert.equal(signal?.suggestedValue, 15);
+  assert.match(signal?.message ?? "", /15-minute version/i);
+});
+
+test("coach softens strict tones when burnout is detected", () => {
+  const signals = buildCoachSignals({
+    habits: [coachHabit],
+    completions: [
+      { habit_id: coachHabit.id, completed_on: "2026-05-05", created_at: "2026-05-05T09:00:00", value: 2000 },
+      { habit_id: coachHabit.id, completed_on: "2026-05-06", created_at: "2026-05-06T09:00:00", value: 2000 },
+      { habit_id: coachHabit.id, completed_on: "2026-05-07", created_at: "2026-05-07T09:00:00", value: 2000 },
+      { habit_id: coachHabit.id, completed_on: "2026-05-08", created_at: "2026-05-08T09:00:00", value: 2000 },
+    ],
+    now: new Date(2026, 4, 14, 18, 0),
+    tone: "military",
+  });
+  const signal = chooseTopCoachSignal(signals);
+  assert.equal(signal?.kind, "burnout");
+  assert.equal(signal?.tone, "calm");
+  assert.match(signal?.message ?? "", /smaller/i);
+});
+
+test("coach tone formatter supports every configured tone", () => {
+  const base = {
+    kind: "encouragement",
+    priority: 10,
+    habitId: "habit-1",
+    habitName: "Read",
+    suggestedAction: "open_habit",
+    message: "",
+  };
+  assert.match(formatCoachMessage({ ...base, tone: "friendly" }), /You/i);
+  assert.match(formatCoachMessage({ ...base, tone: "motivational" }), /momentum/i);
+  assert.match(formatCoachMessage({ ...base, tone: "calm" }), /small/i);
+  assert.match(formatCoachMessage({ ...base, tone: "strict" }), /Commit/i);
+  assert.match(formatCoachMessage({ ...base, tone: "military" }), /Mission/i);
+});
+
+test("AI coach message falls back when disabled or generation fails", async () => {
+  const signal = {
+    kind: "encouragement",
+    priority: 10,
+    habitId: "habit-1",
+    habitName: "Read",
+    tone: "friendly",
+    suggestedAction: "open_habit",
+    message: "Read one page now.",
+  };
+  let calls = 0;
+  const disabled = await resolveCoachMessage(signal, { enabled: false, invoke: async () => { calls++; return "Generated"; } });
+  assert.equal(disabled, signal.message);
+  assert.equal(calls, 0);
+
+  const failed = await resolveCoachMessage(signal, { enabled: true, invoke: async () => { calls++; throw new Error("offline"); } });
+  assert.equal(failed, signal.message);
+  assert.equal(calls, 1);
+});
+
+test("AI coach message uses cache before invoking generation", async () => {
+  const signal = {
+    kind: "behind_progress",
+    priority: 70,
+    habitId: "habit-1",
+    habitName: "Water",
+    tone: "friendly",
+    suggestedAction: "log_value",
+    suggestedValue: 500,
+    message: "Drink 500 ml now.",
+  };
+  const cachedAt = new Date(2026, 4, 14, 12, 0).getTime();
+  const cache = new Map([
+    ["habbit:coach-message:behind_progress:habit-1:friendly:500", JSON.stringify({ message: "Cached coach line.", cachedAt })],
+  ]);
+  const storage = {
+    getItem: async (key) => cache.get(key) ?? null,
+    setItem: async (key, value) => { cache.set(key, value); },
+  };
+  let calls = 0;
+  const message = await resolveCoachMessage(signal, {
+    enabled: true,
+    now: new Date(cachedAt + 60_000),
+    storage,
+    invoke: async () => { calls++; return "Generated coach line."; },
+  });
+  assert.equal(message, "Cached coach line.");
+  assert.equal(calls, 0);
 });

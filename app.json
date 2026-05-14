@@ -29,6 +29,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSUserNotificationsUsageDescription": "Lagan uses notifications to remind you about your habits.",
+        "NSHealthShareUsageDescription": "Lagan reads sleep data from Apple Health to sync your sleep tracker and calculate your sleep score.",
+        "NSHealthUpdateUsageDescription": "Lagan does not write sleep data today, but HealthKit requires this description for health access setup.",
         "NSUserTrackingUsageDescription": "Lagan uses optional product analytics to understand feature usage and improve the app.",
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -44,7 +46,8 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
-        "android.permission.health.READ_STEPS"
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_SLEEP"
       ],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -78,6 +81,14 @@
       "expo-font",
       "expo-secure-store",
       "expo-health-connect",
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Lagan reads sleep data from Apple Health to sync your sleep tracker and calculate your sleep score.",
+          "NSHealthUpdateUsageDescription": "Lagan does not write sleep data today, but HealthKit requires this description for health access setup.",
+          "background": false
+        }
+      ],
       [
         "expo-build-properties",
         {

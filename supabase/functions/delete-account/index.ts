@@ -74,6 +74,7 @@ serve(async (req) => {
   // habit_completions, profiles, account_deletion_requests, etc., but we
   // delete app rows explicitly so partial failures are visible.
   const cascades: Array<[string, any]> = [
+    ["sleep_entries",     admin.from("sleep_entries").delete().eq("user_id", userId)],
     ["habit_completions", admin.from("habit_completions").delete().eq("user_id", userId)],
     ["habits",            admin.from("habits").delete().eq("user_id", userId)],
     ["profiles",          admin.from("profiles").delete().eq("user_id", userId)],

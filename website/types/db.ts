@@ -20,6 +20,7 @@ export type HabitType =
 export type MetricType = "volume_ml" | "steps" | "hours" | "pages" | "minutes" | "distance_km" | "boolean";
 export type VisualType = "water_bottle" | "step_path" | "sleep_moon" | "reading_book" | "progress_ring";
 export type ReminderStrategy = "manual" | "interval" | "conditional_interval";
+export type CoachTone = "friendly" | "motivational" | "calm" | "strict" | "military";
 
 export type Habit = {
   id: string;

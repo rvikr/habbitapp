@@ -45,14 +45,14 @@ export async function syncScheduledReminders(): Promise<void> {
         reminder.habitId,
         reminder.habitName,
         reminder.fireAt,
-        buildProgressBody(reminder.habitName, reminder.progressLabel),
+        reminder.coachMessage ?? buildProgressBody(reminder.habitName, reminder.progressLabel),
       );
       if (id) next[reminder.habitId] = [...(next[reminder.habitId] ?? []), id];
       continue;
     }
 
     if (!reminder.time || !reminder.days) continue;
-    const body = buildSmartBody(reminder.habitName, reminder.context);
+    const body = reminder.coachMessage ?? buildSmartBody(reminder.habitName, reminder.context);
     const ids = await scheduleHabitReminder(reminder.habitId, reminder.habitName, reminder.time, reminder.days, body);
     if (ids.length > 0) next[reminder.habitId] = [...(next[reminder.habitId] ?? []), ...ids];
   }

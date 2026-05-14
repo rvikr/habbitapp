@@ -4,15 +4,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { getHabitsForToday, getInsights } from "@/lib/habits";
-import { setCompletionValue, toggleHabit } from "@/lib/actions";
+import { logCompletion, setCompletionValue, toggleHabit } from "@/lib/actions";
 import InsightsStrip from "@/components/insights-strip";
 import type { Insights } from "@/lib/habits";
 import { useCelebrate } from "@/components/celebration";
 import { useTheme } from "@/components/theme-provider";
 import { recordCompletionAndMaybeReview } from "@/lib/store-review";
 import HabitCard from "@/components/habit-card";
+import CoachCard from "@/components/coach-card";
 import type { Habit } from "@/types/db";
 import { progressForHabit, type HabitProgress } from "@/lib/habit-intelligence";
+import type { CoachSignal } from "@/lib/coach";
 import {
   getStepPermissionStatus,
   getTodayStepSnapshot,
@@ -30,6 +32,7 @@ type DashboardData = {
   profile: { displayName: string; email: string | null };
   insights: Insights;
   leaderboardOptedIn: boolean;
+  coachSignal: CoachSignal | null;
 };
 
 const STEP_SYNC_INTERVAL_MS = 30_000;
@@ -281,6 +284,21 @@ export default function DashboardScreen() {
     load();
   }
 
+  async function handleCoachAction(signal: CoachSignal) {
+    if (signal.suggestedAction === "log_value" && signal.suggestedValue) {
+      const result = await logCompletion(signal.habitId, signal.suggestedValue, "Logged from AI coach");
+      if (!result.ok) {
+        Alert.alert("Could not log progress", result.error ?? "Try again.");
+        return;
+      }
+      celebrate();
+      recordCompletionAndMaybeReview();
+      load();
+      return;
+    }
+    router.push(`/habits/${signal.habitId}`);
+  }
+
   const completedCount = data ? [...data.completedToday].filter(id => habits.some(h => h.id === id)).length : 0;
   const total = habits.length;
   const progress = total > 0 ? completedCount / total : 0;
@@ -363,6 +381,14 @@ export default function DashboardScreen() {
             state={stepTracking}
             primary={primary}
             onEnable={() => syncStepHabit(stepHabit, true, true)}
+          />
+        )}
+
+        {data?.coachSignal && (
+          <CoachCard
+            signal={data.coachSignal}
+            onPress={() => router.push(`/habits/${data.coachSignal!.habitId}`)}
+            onAction={() => handleCoachAction(data.coachSignal!)}
           />
         )}
 

@@ -5,6 +5,9 @@ import { streakFromDates } from "./streak";
 import { XP_PER_LEVEL, levelForXp, xpForCompletions, xpInLevel } from "./xp";
 import type { Milestone } from "@/types/db";
 import { progressForHabit, type HabitProgress } from "./habit-intelligence";
+import { buildCoachSignals, chooseTopCoachSignal, normalizeCoachTone, type CoachSignal } from "./coach";
+import { resolveCoachMessage } from "./coach-ai";
+import { getAiSuggestionsEnabled } from "./feature-flags";
 
 export type Insights = {
   mostProductiveDay: string | null;
@@ -21,26 +24,37 @@ async function getUser() {
 
 export async function getHabitsForToday() {
   if (!isSupabaseConfigured()) {
-    return { habits: [] as Habit[], completedToday: new Set<string>(), todayProgress: new Map<string, HabitProgress>(), profile: { displayName: "Demo", email: null }, leaderboardOptedIn: false };
+    return { habits: [] as Habit[], completedToday: new Set<string>(), todayProgress: new Map<string, HabitProgress>(), profile: { displayName: "Demo", email: null }, leaderboardOptedIn: false, coachSignal: null as CoachSignal | null };
   }
 
   const user = await getUser();
-  if (!user) return { habits: [] as Habit[], completedToday: new Set<string>(), todayProgress: new Map<string, HabitProgress>(), profile: { displayName: "there", email: null }, leaderboardOptedIn: false };
+  if (!user) return { habits: [] as Habit[], completedToday: new Set<string>(), todayProgress: new Map<string, HabitProgress>(), profile: { displayName: "there", email: null }, leaderboardOptedIn: false, coachSignal: null as CoachSignal | null };
 
   const [{ data: habits }, { data: completions }, { data: profile }] = await Promise.all([
     supabase.from("habits").select("*").is("archived_at", null).order("created_at", { ascending: true }),
-    supabase.from("habit_completions").select("habit_id, value").eq("completed_on", today()),
-    supabase.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle(),
+    supabase.from("habit_completions").select("habit_id, completed_on, created_at, value").eq("user_id", user.id).gte("completed_on", localDateDaysAgo(60)),
+    supabase.from("profiles").select("display_name, coach_tone").eq("user_id", user.id).maybeSingle(),
   ]);
 
   const habitsList = (habits ?? []) as Habit[];
-  const completionsByHabit = new Map((completions ?? []).map((c) => [c.habit_id as string, { value: c.value as number | null }]));
+  const completionRows = (completions ?? []) as Array<Pick<HabitCompletion, "habit_id" | "completed_on" | "created_at" | "value">>;
+  const completionsByHabit = new Map(
+    completionRows
+      .filter((c) => c.completed_on === today())
+      .map((c) => [c.habit_id as string, { value: c.value as number | null }]),
+  );
   const todayProgress: TodayProgressMap = new Map(
     habitsList.map((habit) => [habit.id, progressForHabit(habit, completionsByHabit.get(habit.id))]),
   );
   const completedToday = new Set(
     [...todayProgress.entries()].filter(([, progress]) => progress.isDone).map(([habitId]) => habitId),
   );
+  const coachTone = normalizeCoachTone(profile?.coach_tone as string | null | undefined);
+  let coachSignal = chooseTopCoachSignal(buildCoachSignals({ habits: habitsList, completions: completionRows, tone: coachTone }));
+  if (coachSignal) {
+    const enabled = await getAiSuggestionsEnabled();
+    coachSignal = { ...coachSignal, message: await resolveCoachMessage(coachSignal, { enabled }) };
+  }
   const displayName =
     (profile?.display_name as string | null | undefined) ??
     (user.user_metadata?.full_name as string | undefined) ??
@@ -53,6 +67,7 @@ export async function getHabitsForToday() {
     todayProgress,
     profile: { displayName, email: user.email ?? null },
     leaderboardOptedIn: !!(profile?.display_name as string | null | undefined),
+    coachSignal,
   };
 }
 

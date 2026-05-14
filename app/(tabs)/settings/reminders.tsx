@@ -30,7 +30,7 @@ export default function RemindersScreen() {
     const previews: Record<string, string> = {};
     for (const entry of schedule) {
       if (!(entry.habitId in previews)) {
-        previews[entry.habitId] = buildSmartBody(entry.habitName, entry.context);
+        previews[entry.habitId] = entry.coachMessage ?? buildSmartBody(entry.habitName, entry.context);
       }
     }
     setPreviewMessages(previews);

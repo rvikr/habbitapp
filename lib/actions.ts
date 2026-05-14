@@ -6,6 +6,7 @@ import {
   getCurrentUser,
 } from "./supabase/client";
 import type { AvatarStyle } from "./avatar";
+import { normalizeCoachTone, type CoachTone } from "./coach";
 import { track, resetAnalytics } from "./analytics";
 import { authCallbackUrl } from "./auth-redirect";
 import { buildCompletionValuePayload } from "./completions";
@@ -246,6 +247,17 @@ export async function updateAvatar(style: AvatarStyle, seed: string): Promise<Ac
     .update({ avatar_style: style, avatar_seed: seed, updated_at: new Date().toISOString() })
     .eq("user_id", user.id);
   return mutationResult(profileError);
+}
+
+export async function updateCoachTone(tone: CoachTone): Promise<ActionResult> {
+  const user = await getUser();
+  if (!user) return notSignedIn();
+  const { error } = await supabase.from("profiles").upsert({
+    user_id: user.id,
+    coach_tone: normalizeCoachTone(tone),
+    updated_at: new Date().toISOString(),
+  });
+  return mutationResult(error);
 }
 
 export async function updateHabitReminders(habitId: string, data: { enabled: boolean; times: string[]; days: number[] }): Promise<ActionResult> {

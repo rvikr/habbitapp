@@ -20,6 +20,7 @@ export type HabitType =
 export type MetricType = "volume_ml" | "steps" | "hours" | "pages" | "minutes" | "distance_km" | "boolean";
 export type VisualType = "water_bottle" | "step_path" | "sleep_moon" | "reading_book" | "progress_ring";
 export type ReminderStrategy = "manual" | "interval" | "conditional_interval";
+export type CoachTone = "friendly" | "motivational" | "calm" | "strict" | "military";
 
 export type Habit = {
   id: string;
@@ -52,6 +53,29 @@ export type HabitCompletion = {
   value: number | null;
   note: string | null;
   created_at: string;
+};
+
+export type SleepEntry = {
+  id: string;
+  user_id: string | null;
+  sleep_date: string;
+  source: "healthConnect" | "healthKit" | "manual";
+  duration_minutes: number;
+  score: number;
+  start_time: string | null;
+  end_time: string | null;
+  stage_minutes: {
+    awake?: number;
+    asleep?: number;
+    core?: number;
+    deep?: number;
+    rem?: number;
+    outOfBed?: number;
+  } | null;
+  source_metadata: Record<string, unknown> | null;
+  synced_at: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Badge = {
