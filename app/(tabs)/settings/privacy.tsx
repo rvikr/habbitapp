@@ -2,18 +2,19 @@
 import { ActivityIndicator, Alert, Linking, Modal, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import * as ExpoLinking from "expo-linking";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { requestAccountDeletion } from "@/lib/actions";
 import { exportMyData } from "@/lib/privacy";
 import { isAnalyticsOptedOut, setAnalyticsOptOut } from "@/lib/analytics";
 
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL;
+const ACCOUNT_DELETION_URL = process.env.EXPO_PUBLIC_ACCOUNT_DELETION_URL;
 
 export default function PrivacyScreen() {
   const router = useRouter();
   const [analyticsOff, setAnalyticsOff] = useState(false);
   const [reason, setReason] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
   const [savingDeletion, setSavingDeletion] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportText, setExportText] = useState<string | null>(null);
@@ -49,13 +50,14 @@ export default function PrivacyScreen() {
           style: "destructive",
           onPress: async () => {
             setSavingDeletion(true);
-            const result = await requestAccountDeletion(reason);
+            const result = await requestAccountDeletion(reason, deletePassword);
             setSavingDeletion(false);
             if (!result.ok) {
               Alert.alert("Could not delete account", result.error ?? "Try again.");
               return;
             }
             setReason("");
+            setDeletePassword("");
             router.replace("/login");
           },
         },
@@ -69,6 +71,14 @@ export default function PrivacyScreen() {
       return;
     }
     Linking.openURL(PRIVACY_POLICY_URL);
+  }
+
+  function openAccountDeletionPage() {
+    if (!ACCOUNT_DELETION_URL) {
+      Alert.alert("Account deletion URL missing", "Set EXPO_PUBLIC_ACCOUNT_DELETION_URL before submitting to the stores.");
+      return;
+    }
+    Linking.openURL(ACCOUNT_DELETION_URL);
   }
 
   return (
@@ -113,7 +123,7 @@ export default function PrivacyScreen() {
 
           <TouchableOpacity
             className="bg-surface-container dark:bg-d-surface-container rounded-xl p-md flex-row items-center"
-            onPress={() => Linking.openURL(ExpoLinking.createURL("account-deletion"))}
+            onPress={openAccountDeletionPage}
           >
             <MaterialCommunityIcons name="account-remove-outline" size={22} color="#451ebb" />
             <Text className="flex-1 ml-md text-body-md text-on-surface dark:text-d-on-surface font-semibold">Account deletion page</Text>
@@ -130,6 +140,16 @@ export default function PrivacyScreen() {
               onChangeText={setReason}
               multiline
               numberOfLines={3}
+            />
+            <TextInput
+              className="bg-surface-lowest text-on-surface rounded-xl px-md py-sm text-body-md"
+              placeholder="Confirm password"
+              placeholderTextColor="#797586"
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              secureTextEntry
+              textContentType="password"
+              autoCapitalize="none"
             />
             <TouchableOpacity className="bg-error rounded-full py-sm items-center" onPress={handleDeletionRequest} disabled={savingDeletion}>
               {savingDeletion ? <ActivityIndicator color="#fff" /> : <Text className="text-on-error text-label-lg font-semibold">Request deletion</Text>}

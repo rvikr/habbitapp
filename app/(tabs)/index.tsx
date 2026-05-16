@@ -403,16 +403,29 @@ export default function DashboardScreen() {
         <View className="px-margin-mobile gap-sm">
           <Text className="text-label-lg text-on-surface-variant dark:text-d-on-surface-variant mb-xs">TODAY'S HABITS</Text>
           {habits.length === 0 ? (
-            <TouchableOpacity
-              className="bg-surface-container dark:bg-d-surface-container rounded-xl p-lg items-center gap-sm"
-              onPress={() => router.push("/habits/new")}
-            >
-              <MaterialCommunityIcons name="plus-circle-outline" size={40} color={primary} />
-              <Text className="text-body-md text-on-surface dark:text-d-on-surface font-semibold">Add your first habit</Text>
-              <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant text-center">
-                Tap to browse the habit catalog or create a custom one.
-              </Text>
-            </TouchableOpacity>
+            <View className="bg-surface-container dark:bg-d-surface-container rounded-xl p-lg gap-md">
+              <View className="items-center gap-sm">
+                <View className="w-14 h-14 rounded-full bg-primary-fixed items-center justify-center">
+                  <MaterialCommunityIcons name="auto-fix" size={28} color={primary} />
+                </View>
+                <Text className="text-body-md text-on-surface dark:text-d-on-surface font-semibold">Build your first routine</Text>
+                <Text className="text-label-sm text-on-surface-variant dark:text-d-on-surface-variant text-center">
+                  Answer a few questions and get a small habit routine matched to your day.
+                </Text>
+              </View>
+              <TouchableOpacity
+                className="bg-primary rounded-full py-sm items-center"
+                onPress={() => router.push("/habits/wizard")}
+              >
+                <Text className="text-on-primary text-label-lg font-semibold">Build my routine</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="bg-surface-lowest dark:bg-d-surface-lowest rounded-full py-sm items-center"
+                onPress={() => router.push("/habits/new")}
+              >
+                <Text className="text-primary text-label-lg font-semibold">Choose manually</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             habits.map((habit) => (
               <HabitCard

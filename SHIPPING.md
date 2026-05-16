@@ -67,6 +67,8 @@ Suggested tools: Figma (free), Icon Kitchen (https://icon.kitchen) for adaptive 
 - ✅ `app.json` configured with bundleId, package, version, buildNumber, versionCode
 - ✅ iOS privacy strings (NSUserNotificationsUsageDescription, NSUserTrackingUsageDescription)
 - ✅ Android permissions minimised + blocked list
+- ✅ Health Connect permissions limited to `READ_STEPS` and `READ_SLEEP`
+- ✅ Health Connect privacy-policy/rationale activity wired through `plugins/with-health-connect-rationale.js`
 - ✅ ErrorBoundary at app root
 - ✅ Sentry + PostHog wired (lazy-loaded — uses env vars)
 - ✅ expo-updates configured for OTA
@@ -80,6 +82,11 @@ Suggested tools: Figma (free), Icon Kitchen (https://icon.kitchen) for adaptive 
 - [ ] Add `play-service-account.json` locally or configure Google Play credentials in EAS before `eas submit -p android`
 - [ ] Confirm `com.habbitapp.app` bundle ID is unique to you (or change to your reverse domain)
 - [ ] Set production env vars in EAS: Supabase URL/key, privacy policy URL, Sentry DSN, and PostHog key/host
+- [ ] Deploy the public account deletion page and set `EXPO_PUBLIC_ACCOUNT_DELETION_URL` to `https://your-domain/account-deletion`
+- [ ] Set `NEXT_PUBLIC_ACCOUNT_DELETION_CONTACT_EMAIL` for the web account deletion page
+- [ ] Verify the Play Console account deletion URL returns HTTP 200 without sign-in before submitting
+- [ ] Create a Play review test account and put the credentials in Play Console "App access"
+- [ ] Record a short reviewer video showing sign-in, Health Connect step/sleep sync, Privacy & Data, and account deletion
 
 ---
 
@@ -133,6 +140,36 @@ npx eas-cli update --branch production --message "Fix streak counter rollover"
 - **Children's privacy (COPPA)**: don't market the app to under-13s without consent flow.
 - **Data Safety form (Play Store)**: declare what you collect (email, app usage). Be honest —
   Google audits this.
+
+### Google Play policy lockdown
+
+Use this worksheet when completing **Policy > App content** in Play Console.
+
+**Target API**
+- Expo SDK 54 targets Android API 36 by default, which satisfies the current Play requirement for new apps and app updates to target Android 15 / API 35 or higher.
+- Keep `npx expo-doctor` and `npx expo install --check` green before every release.
+
+**Account deletion**
+- In-app path: Android app > Settings > Privacy & Data > Request account deletion.
+- External URL: `https://lagan.health/account-deletion`.
+- Before submission this URL must load publicly, mention Lagan by name, and provide a way to request deletion without reinstalling the app.
+
+**Health Apps declaration**
+- Declare that the app provides health/fitness features.
+- Select **Activity and Fitness** for walking/steps and **Sleep Management** for sleep tracking.
+- Do not select medical-device, medical-diagnosis, clinical decision support, disease management, emergency, or children-only use cases unless the product changes.
+- Health Connect permissions to request in Play Console:
+  - `android.permission.health.READ_STEPS`: reads today's step total when the user taps sync, then stores the total against the Walk habit.
+  - `android.permission.health.READ_SLEEP`: reads last-night sleep sessions when the user taps sync, then stores duration/stage summary for the sleep dashboard and habit progress.
+- Reviewer note: Health Connect sync is optional; users can log habits manually if they do not grant health permissions.
+
+**Data Safety form draft**
+- Personal info: email address and Supabase auth user ID. Purpose: account management, app functionality.
+- Health and fitness: habit logs, step totals, sleep duration/stage summaries. Purpose: app functionality, analytics/personalization inside the app. Do not mark as sold or used for ads.
+- App activity: screen/app interactions and habit events through PostHog when analytics are enabled. Purpose: analytics, product improvement.
+- App info and performance: crash logs/diagnostics through Sentry. Purpose: crash reporting, reliability.
+- Device or other IDs: declare if PostHog/Sentry SDK configuration reports installation/device identifiers.
+- Security practices: data is transmitted over HTTPS; account deletion and in-app data export are available; analytics opt-out is available in Privacy & Data.
 
 ---
 

@@ -80,6 +80,12 @@
       ],
       "expo-font",
       "expo-secure-store",
+      [
+        "./plugins/with-health-connect-rationale",
+        {
+          "privacyPolicyUrl": "https://www.termsfeed.com/live/faa47955-b975-4086-9dca-89663d8882d2"
+        }
+      ],
       "expo-health-connect",
       [
         "@kingstinct/react-native-healthkit",

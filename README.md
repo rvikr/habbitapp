@@ -38,6 +38,8 @@ EXPO_PUBLIC_SENTRY_DSN=                # optional — leave empty to disable cra
 EXPO_PUBLIC_POSTHOG_KEY=               # optional — leave empty to disable analytics
 EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 EXPO_PUBLIC_PRIVACY_POLICY_URL=https://your-domain.example/privacy
+EXPO_PUBLIC_ACCOUNT_DELETION_URL=https://your-domain.example/account-deletion
+EXPO_PUBLIC_SUPPORT_EMAIL=support@your-domain.example
 ```
 
 All `EXPO_PUBLIC_*` vars are bundled into the client at build time. Don't put service-role
@@ -50,6 +52,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 ADMIN_EMAILS=admin@example.com,owner@example.com
+NEXT_PUBLIC_ACCOUNT_DELETION_CONTACT_EMAIL=privacy@your-domain.example
 ```
 
 The service-role key is server-only for the Next admin app. Never expose it through

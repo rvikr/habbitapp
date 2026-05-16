@@ -1,0 +1,339 @@
+// deno-lint-ignore-file no-explicit-any
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceAiQuota, recordAiUsageEvent } from "../_shared/ai-guard.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_ROUTINE_MODEL = Deno.env.get("OPENAI_ROUTINE_MODEL") ?? Deno.env.get("OPENAI_COACH_MODEL") ?? "gpt-5.2";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const COLORS = new Set(["primary", "secondary", "tertiary", "neutral"]);
+const HABIT_TYPES = new Set([
+  "water_intake",
+  "walk",
+  "sleep",
+  "read",
+  "run",
+  "cycling",
+  "meditate",
+  "workout",
+  "journal",
+  "vitamins",
+  "healthy_eating",
+  "cold_shower",
+  "no_social_media",
+  "coding",
+  "stretch",
+  "cooking",
+  "custom",
+]);
+const METRIC_TYPES = new Set(["volume_ml", "steps", "hours", "pages", "minutes", "distance_km", "boolean"]);
+const VISUAL_TYPES = new Set(["water_bottle", "step_path", "sleep_moon", "reading_book", "progress_ring"]);
+const REMINDER_STRATEGIES = new Set(["manual", "interval", "conditional_interval"]);
+
+type RoutineRequest = {
+  answers?: unknown;
+  localRecommendations?: unknown;
+};
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function cleanText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  if (!cleaned || cleaned.length > maxLength) return null;
+  return cleaned;
+}
+
+function normalizeOptionalNumber(value: unknown): number | null | undefined {
+  if (value == null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return undefined;
+  return value;
+}
+
+function normalizeOptionalInteger(value: unknown): number | null | undefined {
+  if (value == null) return null;
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) return undefined;
+  return value;
+}
+
+function normalizeReminderTimes(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const times = value.filter((item): item is string => typeof item === "string");
+  if (times.length !== value.length) return null;
+  if (times.some((time) => !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))) return null;
+  return Array.from(new Set(times)).sort();
+}
+
+function normalizeReminderDays(value: unknown): number[] | null {
+  if (!Array.isArray(value)) return null;
+  const days = value.filter((item): item is number => Number.isInteger(item));
+  if (days.length !== value.length) return null;
+  if (days.some((day) => day < 0 || day > 6)) return null;
+  return Array.from(new Set(days)).sort();
+}
+
+function sanitizeRecommendation(item: Record<string, unknown>) {
+  const id = cleanText(item.id, 48);
+  const name = cleanText(item.name, 60);
+  const reason = cleanText(item.reason, 180);
+  const icon = cleanText(item.icon, 40);
+  const unit = typeof item.unit === "string" ? item.unit.trim().slice(0, 16) : "";
+  const target = normalizeOptionalNumber(item.target);
+  const reminderIntervalMinutes = normalizeOptionalInteger(item.reminderIntervalMinutes);
+  const defaultLogValue = normalizeOptionalNumber(item.defaultLogValue);
+  const reminderTimes = normalizeReminderTimes(item.reminderTimes);
+  const reminderDays = normalizeReminderDays(item.reminderDays);
+
+  if (!id || !name || !reason || !icon) return null;
+  if (typeof item.color !== "string" || !COLORS.has(item.color)) return null;
+  if (typeof item.habitType !== "string" || !HABIT_TYPES.has(item.habitType)) return null;
+  if (typeof item.metricType !== "string" || !METRIC_TYPES.has(item.metricType)) return null;
+  if (typeof item.visualType !== "string" || !VISUAL_TYPES.has(item.visualType)) return null;
+  if (typeof item.reminderStrategy !== "string" || !REMINDER_STRATEGIES.has(item.reminderStrategy)) return null;
+  if (target === undefined || reminderIntervalMinutes === undefined || defaultLogValue === undefined) return null;
+  if (!reminderTimes || !reminderDays) return null;
+  if (typeof item.remindersEnabled !== "boolean") return null;
+
+  const description = item.description == null ? null : cleanText(item.description, 160);
+  if (item.description != null && !description) return null;
+
+  return {
+    id,
+    name,
+    description,
+    reason,
+    selected: typeof item.selected === "boolean" ? item.selected : true,
+    icon,
+    color: item.color,
+    unit,
+    target,
+    remindersEnabled: item.remindersEnabled,
+    reminderTimes,
+    reminderDays,
+    habitType: item.habitType,
+    metricType: item.metricType,
+    visualType: item.visualType,
+    reminderStrategy: item.reminderStrategy,
+    reminderIntervalMinutes,
+    defaultLogValue,
+    mergeSimilar: typeof item.mergeSimilar === "boolean" ? item.mergeSimilar : true,
+  };
+}
+
+function sanitizeRecommendations(input: unknown, fallback: unknown) {
+  if (!Array.isArray(input) || input.length < 1 || input.length > 5) return fallback;
+  const sanitized = [];
+  const seen = new Set<string>();
+  for (const item of input) {
+    if (!isRecord(item)) return fallback;
+    const recommendation = sanitizeRecommendation(item);
+    if (!recommendation) return fallback;
+    const key = `${recommendation.habitType}:${recommendation.name.toLowerCase()}`;
+    if (seen.has(key)) return fallback;
+    seen.add(key);
+    sanitized.push(recommendation);
+  }
+  return sanitized;
+}
+
+function outputText(body: any): string | null {
+  if (typeof body?.output_text === "string") return body.output_text;
+  for (const item of body?.output ?? []) {
+    for (const content of item?.content ?? []) {
+      if (content?.type === "output_text" && typeof content?.text === "string") return content.text;
+    }
+  }
+  return null;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS_HEADERS });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return json({ error: "Missing authorization header" }, 401);
+
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: { user }, error: userError } = await userClient.auth.getUser();
+  if (userError || !user) return json({ error: "Unauthorized" }, 401);
+
+  let body: RoutineRequest;
+  try {
+    body = await req.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const localRecommendations = sanitizeRecommendations(body.localRecommendations, []);
+  if (!Array.isArray(localRecommendations) || localRecommendations.length === 0) {
+    return json({ error: "Invalid local recommendations" }, 400);
+  }
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("AI quota guard is not configured for habit-routine");
+    return json({ recommendations: localRecommendations, generated: false, reason: "quota_guard_unavailable" }, 503);
+  }
+
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const quota = await enforceAiQuota(admin, user.id, "habit-routine");
+  if (!quota.allowed) {
+    console.warn("AI habit-routine blocked", { userId: user.id, reason: quota.reason });
+    return json(
+      { recommendations: localRecommendations, generated: false, reason: quota.reason },
+      quota.status,
+    );
+  }
+
+  if (!OPENAI_API_KEY) {
+    await recordAiUsageEvent(admin, user.id, "habit-routine", "fallback", "openai_key_missing");
+    return json({ recommendations: localRecommendations, generated: false, reason: "openai_key_missing" }, 503);
+  }
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: OPENAI_ROUTINE_MODEL,
+      max_output_tokens: 1400,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "habit_routine",
+          strict: true,
+          schema: routineSchema(),
+        },
+      },
+      input: [
+        {
+          role: "system",
+          content:
+            "You refine habit recommendations for an onboarding routine. Return JSON only. " +
+            "Keep habits concrete, non-medical, beginner-safe, and compatible with the provided enum values. " +
+            "Return 3 to 5 recommendations. Preserve core local habit metadata unless a small improvement is clearly useful.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify({
+            answers: body.answers,
+            localRecommendations,
+          }),
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("OpenAI habit-routine failed", { status: response.status, error });
+    await recordAiUsageEvent(admin, user.id, "habit-routine", "failed", "openai_error", {
+      status: response.status,
+    });
+    return json({ recommendations: localRecommendations, generated: false });
+  }
+
+  try {
+    const result = await response.json();
+    const parsed = JSON.parse(outputText(result) ?? "{}");
+    const recommendations = sanitizeRecommendations(parsed.recommendations, localRecommendations);
+    await recordAiUsageEvent(
+      admin,
+      user.id,
+      "habit-routine",
+      recommendations !== localRecommendations ? "succeeded" : "fallback",
+      recommendations !== localRecommendations ? undefined : "invalid_openai_output",
+    );
+    return json({
+      recommendations,
+      generated: recommendations !== localRecommendations,
+    });
+  } catch (error) {
+    console.error("OpenAI habit-routine parse failed", error);
+    await recordAiUsageEvent(admin, user.id, "habit-routine", "failed", "parse_failed");
+    return json({ recommendations: localRecommendations, generated: false });
+  }
+});
+
+function routineSchema() {
+  const recommendation = {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "id",
+      "reason",
+      "selected",
+      "name",
+      "description",
+      "icon",
+      "color",
+      "unit",
+      "target",
+      "remindersEnabled",
+      "reminderTimes",
+      "reminderDays",
+      "habitType",
+      "metricType",
+      "visualType",
+      "reminderStrategy",
+      "reminderIntervalMinutes",
+      "defaultLogValue",
+      "mergeSimilar",
+    ],
+    properties: {
+      id: { type: "string" },
+      reason: { type: "string" },
+      selected: { type: "boolean" },
+      name: { type: "string" },
+      description: { anyOf: [{ type: "string" }, { type: "null" }] },
+      icon: { type: "string" },
+      color: { type: "string", enum: [...COLORS] },
+      unit: { type: "string" },
+      target: { anyOf: [{ type: "number" }, { type: "null" }] },
+      remindersEnabled: { type: "boolean" },
+      reminderTimes: { type: "array", items: { type: "string" } },
+      reminderDays: { type: "array", items: { type: "number" } },
+      habitType: { type: "string", enum: [...HABIT_TYPES] },
+      metricType: { type: "string", enum: [...METRIC_TYPES] },
+      visualType: { type: "string", enum: [...VISUAL_TYPES] },
+      reminderStrategy: { type: "string", enum: [...REMINDER_STRATEGIES] },
+      reminderIntervalMinutes: { anyOf: [{ type: "number" }, { type: "null" }] },
+      defaultLogValue: { anyOf: [{ type: "number" }, { type: "null" }] },
+      mergeSimilar: { type: "boolean" },
+    },
+  };
+
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["recommendations"],
+    properties: {
+      recommendations: {
+        type: "array",
+        minItems: 3,
+        maxItems: 5,
+        items: recommendation,
+      },
+    },
+  };
+}

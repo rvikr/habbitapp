@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { getPublicStats, formatCount } from "@/lib/stats";
 import LoginForm from "./LoginForm";
 
@@ -123,7 +124,9 @@ export default async function LoginPage() {
               Lagan <span className="text-primary">लगन</span>
             </span>
           </Link>
-          <LoginForm />
+          <Suspense fallback={<div className="text-sm text-on-surface-variant">Loading sign in...</div>}>
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
     </div>

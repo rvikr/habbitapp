@@ -29,6 +29,12 @@ import {
   smartReminderTimesForDay,
 } from "../lib/habit-intelligence.ts";
 import {
+  buildRoutineRecommendations,
+} from "../lib/routine-builder.ts";
+import {
+  sanitizeHabitRecommendations,
+} from "../lib/routine-ai.ts";
+import {
   buildCoachSignals,
   formatCoachMessage,
   chooseTopCoachSignal,
@@ -89,6 +95,123 @@ test("XP constants are canonical across app, website, and SQL", () => {
   const sql = readFileSync("supabase/migrations/0008_release_readiness.sql", "utf8");
   assert.match(sql, /count\(\*\)::bigint \* 10 as xp/);
   assert.match(sql, /\/ 500 \+ 1 as level/);
+});
+
+test("leaderboard RPC is restricted to authenticated callers", () => {
+  const sql = readFileSync("supabase/migrations/0012_restrict_leaderboard_rpc.sql", "utf8");
+  assert.match(sql, /revoke execute on function public\.get_leaderboard\(text\) from public/i);
+  assert.match(sql, /revoke execute on function public\.get_leaderboard\(text\) from anon/i);
+  assert.match(sql, /grant execute on function public\.get_leaderboard\(text\) to authenticated/i);
+  assert.match(sql, /if auth\.uid\(\) is null then/i);
+  assert.match(sql, /raise exception 'authenticated user required'/i);
+});
+
+test("AI quota RPC is service-only and records quota events", () => {
+  const sql = readFileSync("supabase/migrations/0013_ai_quota_and_auth_hardening.sql", "utf8");
+  assert.match(sql, /create table if not exists public\.ai_usage_counters/i);
+  assert.match(sql, /create table if not exists public\.ai_usage_events/i);
+  assert.match(sql, /revoke all on table public\.ai_usage_counters from public/i);
+  assert.match(sql, /revoke all on table public\.ai_usage_events from public/i);
+  assert.match(sql, /create or replace function public\.consume_ai_quota/i);
+  assert.match(sql, /current_setting\('request\.jwt\.claim\.role'/i);
+  assert.match(sql, /raise exception 'service role required'/i);
+  assert.match(sql, /revoke execute on function public\.consume_ai_quota\(uuid, text, integer, integer\) from public/i);
+  assert.match(sql, /revoke execute on function public\.consume_ai_quota\(uuid, text, integer, integer\) from anon/i);
+  assert.match(sql, /grant execute on function public\.consume_ai_quota\(uuid, text, integer, integer\) to service_role/i);
+  assert.match(sql, /where key = 'ai_suggestions'/i);
+  assert.match(sql, /hourly_quota_exceeded/i);
+  assert.match(sql, /daily_quota_exceeded/i);
+});
+
+test("AI Edge Functions enforce server-side quota before OpenAI calls", () => {
+  for (const [path, feature] of [
+    ["supabase/functions/coach-message/index.ts", "coach-message"],
+    ["supabase/functions/habit-routine/index.ts", "habit-routine"],
+  ]) {
+    const source = readFileSync(path, "utf8");
+    const guardIndex = source.indexOf("enforceAiQuota");
+    const fetchIndex = source.indexOf('fetch("https://api.openai.com/v1/responses"');
+    assert.ok(guardIndex >= 0, `${path} should enforce the AI quota guard`);
+    assert.ok(fetchIndex >= 0, `${path} should call OpenAI through fetch`);
+    assert.ok(guardIndex < fetchIndex, `${path} should enforce quota before calling OpenAI`);
+    assert.match(source, new RegExp(`enforceAiQuota\\(admin, user\\.id, "${feature}"\\)`));
+    assert.match(source, /SUPABASE_SERVICE_ROLE_KEY/);
+    assert.match(source, /recordAiUsageEvent/);
+  }
+});
+
+test("account deletion requires password confirmation and recent sign-in", () => {
+  const actionSource = readFileSync("lib/actions.ts", "utf8");
+  assert.match(actionSource, /requestAccountDeletion\(reason\?: string, password\?: string\)/);
+  assert.match(actionSource, /signInWithPassword/);
+  assert.match(actionSource, /Confirm your password before deleting your account/);
+
+  const screenSource = readFileSync("app/(tabs)/settings/privacy.tsx", "utf8");
+  assert.match(screenSource, /deletePassword/);
+  assert.match(screenSource, /secureTextEntry/);
+  assert.match(screenSource, /requestAccountDeletion\(reason, deletePassword\)/);
+
+  const functionSource = readFileSync("supabase/functions/delete-account/index.ts", "utf8");
+  assert.match(functionSource, /DELETE_ACCOUNT_REAUTH_MAX_AGE_SECONDS/);
+  assert.match(functionSource, /function hasRecentSignIn/);
+  assert.match(functionSource, /user\.last_sign_in_at/);
+  assert.match(functionSource, /Recent sign-in required before deleting your account/);
+  assert.ok(
+    functionSource.indexOf("hasRecentSignIn(user)") < functionSource.indexOf("admin.auth.admin.deleteUser"),
+    "delete-account should enforce recent sign-in before deleting the auth user",
+  );
+});
+
+test("external account deletion page is wired for Play Store compliance", () => {
+  const mobileEnvExample = readFileSync(".env.local.example", "utf8");
+  assert.match(mobileEnvExample, /EXPO_PUBLIC_ACCOUNT_DELETION_URL=https:\/\/your-domain\.example\/account-deletion/);
+
+  const websiteEnvExample = readFileSync("website/.env.local.example", "utf8");
+  assert.match(websiteEnvExample, /NEXT_PUBLIC_ACCOUNT_DELETION_CONTACT_EMAIL=privacy@your-domain\.example/);
+
+  const privacyScreen = readFileSync("app/(tabs)/settings/privacy.tsx", "utf8");
+  assert.match(privacyScreen, /EXPO_PUBLIC_ACCOUNT_DELETION_URL/);
+  assert.match(privacyScreen, /openAccountDeletionPage/);
+  assert.doesNotMatch(privacyScreen, /ExpoLinking\.createURL\("account-deletion"\)/);
+
+  const deletionPage = readFileSync("website/app/account-deletion/page.tsx", "utf8");
+  assert.match(deletionPage, /Delete your Lagan account/);
+  assert.match(deletionPage, /\/login\?next=\/settings/);
+  assert.match(deletionPage, /NEXT_PUBLIC_ACCOUNT_DELETION_CONTACT_EMAIL/);
+
+  const settingsForm = readFileSync("website/app/(app)/settings/SettingsForm.tsx", "utf8");
+  assert.match(settingsForm, /deletePassword/);
+  assert.match(settingsForm, /signInWithPassword/);
+  assert.match(settingsForm, /functions\.invoke<\{ ok\?: boolean; error\?: string \}>\("delete-account"/);
+  assert.match(settingsForm, /\/account-deletion\?status=deleted/);
+
+  const loginForm = readFileSync("website/app/login/LoginForm.tsx", "utf8");
+  assert.match(loginForm, /useSearchParams/);
+  assert.match(loginForm, /safeNextPath/);
+});
+
+test("Health Connect privacy policy links route to a dedicated Play rationale activity", () => {
+  const appConfig = JSON.parse(readFileSync("app.json", "utf8"));
+  const plugins = appConfig.expo.plugins.map((plugin) => Array.isArray(plugin) ? plugin[0] : plugin);
+  const healthConnectIndex = plugins.indexOf("expo-health-connect");
+  const rationaleIndex = plugins.indexOf("./plugins/with-health-connect-rationale");
+  assert.ok(healthConnectIndex >= 0, "app should install the Health Connect config plugin");
+  assert.ok(rationaleIndex >= 0, "app should install the Health Connect rationale config plugin");
+  assert.ok(
+    rationaleIndex < healthConnectIndex,
+    "rationale plugin should be declared before expo-health-connect so its manifest cleanup runs after Expo composes mods",
+  );
+  assert.deepEqual(appConfig.expo.android.permissions.filter((permission) => permission.startsWith("android.permission.health.")), [
+    "android.permission.health.READ_STEPS",
+    "android.permission.health.READ_SLEEP",
+  ]);
+
+  const pluginSource = readFileSync("plugins/with-health-connect-rationale.js", "utf8");
+  assert.match(pluginSource, /HealthConnectRationaleActivity/);
+  assert.match(pluginSource, /ACTION_SHOW_PERMISSIONS_RATIONALE/);
+  assert.match(pluginSource, /VIEW_PERMISSION_USAGE/);
+  assert.match(pluginSource, /EXPO_PUBLIC_PRIVACY_POLICY_URL/);
+  assert.match(pluginSource, /removeMainActivityHealthConnectRationaleFilter/);
 });
 
 test("Supabase stale refresh token errors are recognized", () => {
@@ -365,6 +488,69 @@ test("smart reminder slots respect active hours and intervals", () => {
   assert.deepEqual(slots.map((slot) => slot.getHours()), [8, 10, 12, 14, 16, 18, 20, 22]);
   const midday = smartReminderTimesForDay(new Date(2026, 4, 10, 12, 30), 60);
   assert.equal(midday[0].getHours(), 13);
+});
+
+test("routine builder gives office workers water posture walking and sleep habits", () => {
+  const routine = buildRoutineRecommendations({
+    goals: ["energy", "health"],
+    lifestyle: "office",
+    sleep: "poor",
+    workload: "high",
+    stress: "medium",
+    fitnessLevel: "beginner",
+  });
+  const names = routine.map((habit) => habit.name.toLowerCase());
+  assert.ok(names.some((name) => name.includes("water")));
+  assert.ok(names.some((name) => name.includes("posture") || name.includes("stretch")));
+  assert.ok(names.some((name) => name.includes("walk")));
+  assert.ok(names.some((name) => name.includes("sleep")));
+  assert.ok(routine.length <= 5);
+});
+
+test("routine builder gives students focus revision reading and screen limit habits", () => {
+  const routine = buildRoutineRecommendations({
+    goals: ["focus", "learning"],
+    lifestyle: "student",
+    sleep: "okay",
+    workload: "high",
+    stress: "high",
+    fitnessLevel: "beginner",
+  });
+  const names = routine.map((habit) => habit.name.toLowerCase());
+  assert.ok(names.some((name) => name.includes("focus")));
+  assert.ok(names.some((name) => name.includes("revision") || name.includes("study")));
+  assert.ok(names.some((name) => name.includes("read")));
+  assert.ok(names.some((name) => name.includes("screen")));
+  assert.ok(routine.length <= 5);
+});
+
+test("routine builder keeps beginner fitness targets gentle", () => {
+  const routine = buildRoutineRecommendations({
+    goals: ["fitness"],
+    lifestyle: "active",
+    sleep: "good",
+    workload: "normal",
+    stress: "low",
+    fitnessLevel: "beginner",
+  });
+  const workout = routine.find((habit) => habit.habitType === "workout");
+  const walk = routine.find((habit) => habit.habitType === "walk");
+  assert.ok(!workout || (workout.target ?? 0) <= 20);
+  assert.ok(!walk || (walk.target ?? 0) <= 6000);
+});
+
+test("AI routine sanitizer rejects invalid names enums and oversized routines", () => {
+  const fallback = buildRoutineRecommendations({
+    goals: ["focus"],
+    lifestyle: "student",
+    sleep: "okay",
+    workload: "normal",
+    stress: "medium",
+    fitnessLevel: "beginner",
+  });
+  assert.equal(sanitizeHabitRecommendations([{ ...fallback[0], name: "" }], fallback), fallback);
+  assert.equal(sanitizeHabitRecommendations([{ ...fallback[0], color: "rainbow" }], fallback), fallback);
+  assert.equal(sanitizeHabitRecommendations([...fallback, ...fallback], fallback), fallback);
 });
 
 const coachHabit = {

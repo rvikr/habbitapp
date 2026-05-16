@@ -46,6 +46,10 @@ export default function SettingsForm({ userId, displayName, email }: Props) {
   const [success, setSuccess] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -81,6 +85,43 @@ export default function SettingsForm({ userId, displayName, email }: Props) {
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push("/");
+    router.refresh();
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteMsg("");
+    if (!deletePassword.trim()) {
+      setDeleteMsg("Enter your password to confirm account deletion.");
+      return;
+    }
+    if (!window.confirm("Delete your Lagan account permanently? This removes your account and app data and cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(true);
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password: deletePassword.trim(),
+    });
+    if (signInError) {
+      setDeleting(false);
+      setDeleteMsg("Password confirmation failed.");
+      return;
+    }
+
+    const reason = deleteReason.trim() || null;
+    const { data, error: deleteError } = await supabase.functions.invoke<{ ok?: boolean; error?: string }>("delete-account", {
+      body: { reason },
+    });
+    setDeleting(false);
+
+    if (deleteError || !data?.ok) {
+      setDeleteMsg(deleteError?.message ?? data?.error ?? "Could not delete account.");
+      return;
+    }
+
+    await supabase.auth.signOut();
+    router.push("/account-deletion?status=deleted");
     router.refresh();
   }
 
@@ -251,7 +292,39 @@ export default function SettingsForm({ userId, displayName, email }: Props) {
           </span>
           <h2 className="font-bold text-on-background text-base">Account Actions</h2>
         </div>
-        <div className="p-6">
+        <div className="p-6 space-y-5">
+          <div className="rounded-2xl border border-error/20 bg-error-container/30 p-4 space-y-3">
+            <div>
+              <p className="font-bold text-on-background text-sm">Delete account permanently</p>
+              <p className="text-xs text-on-surface-variant mt-1">
+                This removes your Lagan account, profile, habits, completions, sleep entries, and feedback. This cannot be undone.
+              </p>
+            </div>
+            <textarea
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Optional reason"
+              rows={3}
+              className="w-full px-4 py-3 bg-white border border-outline-variant rounded-xl text-on-background placeholder:text-outline text-sm font-medium focus:outline-none focus:border-error focus:ring-2 focus:ring-error/15 transition-all"
+            />
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Confirm password"
+              className="w-full px-4 py-3 bg-white border border-outline-variant rounded-xl text-on-background placeholder:text-outline text-sm font-medium focus:outline-none focus:border-error focus:ring-2 focus:ring-error/15 transition-all"
+            />
+            {deleteMsg && <p className="text-xs text-error font-medium">{deleteMsg}</p>}
+            <button
+              type="button"
+              onClick={handleDeleteAccount}
+              disabled={deleting}
+              className="inline-flex items-center gap-2 text-sm font-bold text-error hover:opacity-70 transition-opacity disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+              {deleting ? "Deleting account..." : "Delete my account"}
+            </button>
+          </div>
           <button
             type="button"
             onClick={handleSignOut}

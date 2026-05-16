@@ -424,10 +424,21 @@ export async function updatePassword(newPassword: string) {
   }
 }
 
-export async function requestAccountDeletion(reason?: string): Promise<ActionResult> {
+export async function requestAccountDeletion(reason?: string, password?: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return notSignedIn();
+  const email = user.email?.trim();
+  const confirmationPassword = password?.trim() ?? "";
+  if (!email || !confirmationPassword) {
+    return { ok: false, error: "Confirm your password before deleting your account." };
+  }
   try {
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password: confirmationPassword,
+    });
+    if (signInError) return { ok: false, error: "Password confirmation failed." };
+
     const { data, error } = await supabase.functions.invoke<{ ok?: boolean; error?: string }>(
       "delete-account",
       { body: { reason: reason?.trim() || null } },

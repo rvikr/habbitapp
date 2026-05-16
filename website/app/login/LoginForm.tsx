@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 function Icon({
@@ -25,6 +25,7 @@ function Icon({
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,6 +34,7 @@ export default function LoginForm() {
   const [message, setMessage] = useState("");
 
   const supabase = createClient();
+  const nextPath = safeNextPath(searchParams.get("next"));
 
   async function handleEmailAuth(e: React.FormEvent) {
     e.preventDefault();
@@ -48,7 +50,7 @@ export default function LoginForm() {
       if (error) {
         setError(error.message);
       } else {
-        router.push("/dashboard");
+        router.push(nextPath);
         router.refresh();
       }
     } else {
@@ -230,4 +232,12 @@ export default function LoginForm() {
       </p>
     </div>
   );
+}
+
+function safeNextPath(value: string | null): string {
+  if (!value) return "/dashboard";
+  if (!value.startsWith("/") || value.startsWith("//") || value.includes("://")) {
+    return "/dashboard";
+  }
+  return value;
 }

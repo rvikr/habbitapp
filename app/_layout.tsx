@@ -121,6 +121,7 @@ function RootLayoutContent() {
       <Stack.Screen name="reset-password" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="account-deletion" options={{ headerShown: false }} />
       <Stack.Screen name="habits/new" options={{ headerShown: false, presentation: "card" }} />
+      <Stack.Screen name="habits/wizard" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="habits/[id]/index" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="habits/[id]/edit" options={{ headerShown: false, presentation: "card" }} />
     </Stack>

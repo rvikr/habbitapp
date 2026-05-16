@@ -16,6 +16,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const REAUTH_MAX_AGE_MS = Number(Deno.env.get("DELETE_ACCOUNT_REAUTH_MAX_AGE_SECONDS") ?? "600") * 1000;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,13 @@ function json(body: unknown, status = 200) {
     status,
     headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });
+}
+
+function hasRecentSignIn(user: { last_sign_in_at?: string | null }): boolean {
+  if (!Number.isFinite(REAUTH_MAX_AGE_MS) || REAUTH_MAX_AGE_MS <= 0) return false;
+  const signedInAt = Date.parse(user.last_sign_in_at ?? "");
+  if (!Number.isFinite(signedInAt)) return false;
+  return Date.now() - signedInAt <= REAUTH_MAX_AGE_MS;
 }
 
 serve(async (req) => {
@@ -43,6 +51,9 @@ serve(async (req) => {
   });
   const { data: { user }, error: userError } = await userClient.auth.getUser();
   if (userError || !user) return json({ error: "Unauthorized" }, 401);
+  if (!hasRecentSignIn(user)) {
+    return json({ error: "Recent sign-in required before deleting your account." }, 403);
+  }
 
   const userId = user.id;
 

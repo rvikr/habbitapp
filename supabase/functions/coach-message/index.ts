@@ -1,9 +1,11 @@
 // deno-lint-ignore-file no-explicit-any
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { enforceAiQuota, recordAiUsageEvent } from "../_shared/ai-guard.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 const OPENAI_COACH_MODEL = Deno.env.get("OPENAI_COACH_MODEL") ?? "gpt-5.4-mini";
 
@@ -63,7 +65,6 @@ serve(async (req) => {
   });
   const { data: { user }, error: userError } = await userClient.auth.getUser();
   if (userError || !user) return json({ error: "Unauthorized" }, 401);
-  if (!OPENAI_API_KEY) return json({ error: "OPENAI_API_KEY is not configured" }, 503);
 
   let body: CoachRequest;
   try {
@@ -76,6 +77,26 @@ serve(async (req) => {
   const habitName = cleanMessage(signal?.habitName);
   const fallbackMessage = cleanMessage(signal?.fallbackMessage);
   if (!signal || !habitName || !fallbackMessage) return json({ error: "Invalid coach signal" }, 400);
+
+  if (!SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("AI quota guard is not configured for coach-message");
+    return json({ message: fallbackMessage, generated: false, reason: "quota_guard_unavailable" }, 503);
+  }
+
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const quota = await enforceAiQuota(admin, user.id, "coach-message");
+  if (!quota.allowed) {
+    console.warn("AI coach-message blocked", { userId: user.id, reason: quota.reason });
+    return json(
+      { message: fallbackMessage, generated: false, reason: quota.reason },
+      quota.status,
+    );
+  }
+
+  if (!OPENAI_API_KEY) {
+    await recordAiUsageEvent(admin, user.id, "coach-message", "fallback", "openai_key_missing");
+    return json({ message: fallbackMessage, generated: false, reason: "openai_key_missing" }, 503);
+  }
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -112,9 +133,20 @@ serve(async (req) => {
   if (!response.ok) {
     const error = await response.text();
     console.error("OpenAI coach-message failed", { status: response.status, error });
+    await recordAiUsageEvent(admin, user.id, "coach-message", "failed", "openai_error", {
+      status: response.status,
+    });
     return json({ message: fallbackMessage, generated: false }, 200);
   }
 
   const result = await response.json();
-  return json({ message: outputText(result) ?? fallbackMessage, generated: true });
+  const message = outputText(result);
+  await recordAiUsageEvent(
+    admin,
+    user.id,
+    "coach-message",
+    message ? "succeeded" : "fallback",
+    message ? undefined : "empty_openai_output",
+  );
+  return json({ message: message ?? fallbackMessage, generated: Boolean(message) });
 });
